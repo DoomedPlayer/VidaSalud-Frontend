@@ -32,46 +32,53 @@ export default function Catalog() {
 
     return (
         <div>
-            {/* Formulario para Registrar Nueva Prestación */}
-            <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '2rem', marginBottom: '1.5rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
-                <h3 style={{ marginTop: 0, color: '#1e293b' }}>Registrar Nueva Prestación en Catálogo</h3>
-                <form onSubmit={agregarPrestacion} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', alignItems: 'end', marginTop: '1rem' }}>
+            {/* Banner de Módulo */}
+            <div style={{ background: 'linear-gradient(135deg, #0f766e 0%, #0d9488 100%)', borderRadius: '16px', padding: '2.5rem', color: 'white', marginBottom: '2rem', boxShadow: '0 10px 15px -3px rgba(13, 148, 136, 0.2)' }}>
+                <span style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.3rem 0.8rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: '600', textTransform: 'uppercase' }}>Administración de Red</span>
+                <h1 style={{ margin: '0.75rem 0 0.5rem 0', fontSize: '2rem' }}>Catálogo de Prestaciones y Box</h1>
+                <p style={{ margin: 0, opacity: 0.9, fontSize: '1rem' }}>Gestión centralizada de servicios médicos y valores referenciales.</p>
+            </div>
+
+            {/* Formulario */}
+            <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '2rem', marginBottom: '2rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
+                <h3 style={{ marginTop: 0, color: '#1e293b', fontSize: '1.2rem', marginBottom: '1rem' }}>Registrar Nueva Prestación</h3>
+                <form onSubmit={agregarPrestacion} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.25rem', alignItems: 'end' }}>
                     <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#334155', marginBottom: '0.35rem' }}>Código</label>
+                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#334155', marginBottom: '0.4rem' }}>Código</label>
                         <input 
                             type="text" 
                             placeholder="Ej. PED-004" 
                             value={codigo}
                             onChange={(e) => setCodigo(e.target.value)}
-                            style={{ width: '100%', padding: '0.6rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                            style={{ width: '100%', padding: '0.7rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', boxSizing: 'border-box' }}
                         />
                     </div>
                     <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#334155', marginBottom: '0.35rem' }}>Nombre del Servicio</label>
+                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#334155', marginBottom: '0.4rem' }}>Nombre del Servicio</label>
                         <input 
                             type="text" 
                             placeholder="Ej. Control Pediátrico" 
                             value={nombre}
                             onChange={(e) => setNombre(e.target.value)}
-                            style={{ width: '100%', padding: '0.6rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                            style={{ width: '100%', padding: '0.7rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', boxSizing: 'border-box' }}
                         />
                     </div>
                     <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#334155', marginBottom: '0.35rem' }}>Valor Referencial</label>
+                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#334155', marginBottom: '0.4rem' }}>Valor Referencial</label>
                         <input 
                             type="text" 
                             placeholder="Ej. 20.000" 
                             value={valor}
                             onChange={(e) => setValor(e.target.value)}
-                            style={{ width: '100%', padding: '0.6rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                            style={{ width: '100%', padding: '0.7rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', boxSizing: 'border-box' }}
                         />
                     </div>
                     <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#334155', marginBottom: '0.35rem' }}>Duración Estimada</label>
+                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#334155', marginBottom: '0.4rem' }}>Duración Estimada</label>
                         <select 
                             value={duracion}
                             onChange={(e) => setDuracion(e.target.value)}
-                            style={{ width: '100%', padding: '0.6rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', backgroundColor: '#white', boxSizing: 'border-box' }}
+                            style={{ width: '100%', padding: '0.7rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', backgroundColor: '#fff', boxSizing: 'border-box' }}
                         >
                             <option value="15 min">15 min</option>
                             <option value="20 min">20 min</option>
@@ -80,35 +87,34 @@ export default function Catalog() {
                         </select>
                     </div>
                     <div>
-                        <button type="submit" style={{ backgroundColor: '#0d9488', color: 'white', border: 'none', padding: '0.65rem 1.25rem', fontSize: '0.9rem', fontWeight: '600', borderRadius: '8px', cursor: 'pointer', width: '100%' }}>
+                        <button type="submit" style={{ backgroundColor: '#0d9488', color: 'white', border: 'none', padding: '0.75rem 1.25rem', fontSize: '0.9rem', fontWeight: '600', borderRadius: '8px', cursor: 'pointer', width: '100%' }}>
                             Agregar al Catálogo
                         </button>
                     </div>
                 </form>
             </div>
 
-            {/* Tabla de Prestaciones */}
-            <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '2rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
-                <h2 style={{ marginTop: 0, color: '#1e293b' }}>Catálogo Oficial de Prestaciones y Box</h2>
-                <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Listado centralizado de servicios médicos disponibles en la red de clínicas.</p>
+            {/* Tabla */}
+            <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '2rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
+                <h3 style={{ marginTop: 0, color: '#1e293b', fontSize: '1.2rem', marginBottom: '1.5rem' }}>Listado Oficial de Prestaciones</h3>
 
                 <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
                         <thead>
                             <tr style={{ backgroundColor: '#f8fafc', color: '#334155', borderBottom: '2px solid #e2e8f0' }}>
-                                <th style={{ padding: '0.75rem 1rem' }}>Código</th>
-                                <th style={{ padding: '0.75rem 1rem' }}>Prestación</th>
-                                <th style={{ padding: '0.75rem 1rem' }}>Valor Referencial</th>
-                                <th style={{ padding: '0.75rem 1rem' }}>Duración Estimada</th>
+                                <th style={{ padding: '0.85rem 1rem' }}>Código</th>
+                                <th style={{ padding: '0.85rem 1rem' }}>Prestación</th>
+                                <th style={{ padding: '0.85rem 1rem' }}>Valor Referencial</th>
+                                <th style={{ padding: '0.85rem 1rem' }}>Duración Estimada</th>
                             </tr>
                         </thead>
                         <tbody>
                             {prestaciones.map((p) => (
                                 <tr key={p.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                                    <td style={{ padding: '0.75rem 1rem' }}><code style={{ backgroundColor: '#f1f5f9', padding: '0.2rem 0.4rem', borderRadius: '4px', color: '#0f766e' }}>{p.codigo}</code></td>
-                                    <td style={{ padding: '0.75rem 1rem', fontWeight: '600', color: '#1e293b' }}>{p.nombre}</td>
-                                    <td style={{ padding: '0.75rem 1rem', color: '#475569' }}>{p.valor}</td>
-                                    <td style={{ padding: '0.75rem 1rem', color: '#475569' }}>{p.duracion}</td>
+                                    <td style={{ padding: '0.85rem 1rem' }}><code style={{ backgroundColor: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '6px', color: '#0f766e', fontWeight: '600' }}>{p.codigo}</code></td>
+                                    <td style={{ padding: '0.85rem 1rem', fontWeight: '600', color: '#1e293b' }}>{p.nombre}</td>
+                                    <td style={{ padding: '0.85rem 1rem', color: '#475569' }}>{p.valor}</td>
+                                    <td style={{ padding: '0.85rem 1rem', color: '#475569' }}>{p.duracion}</td>
                                 </tr>
                             ))}
                         </tbody>
