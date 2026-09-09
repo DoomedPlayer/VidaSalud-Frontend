@@ -1,7 +1,11 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, Link } from "react-router-dom";
 import { useMsal, AuthenticatedTemplate, UnauthenticatedTemplate } from "@azure/msal-react";
 import { loginRequest } from "./authConfig";
 import Dashboard from "./pages/Dashboard";
+import Appointments from "./pages/Appointments";
+import Catalog from "./pages/Catalog";
+import Reports from "./pages/Reports";
+import Audit from "./pages/Audit";
 import './App.css';
 
 function App() {
@@ -18,16 +22,22 @@ function App() {
   return (
     <Router>
       <div className="App">
-        {/* Barra de navegación superior */}
-        <nav style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px' }}>
-          <AuthenticatedTemplate>
-            <button onClick={handleLogout}>Cerrar Sesión</button>
-          </AuthenticatedTemplate>
-        </nav>
+        {/* Barra de Navegación Global (Solo visible si está autenticado) */}
+        <AuthenticatedTemplate>
+          <nav style={{ display: 'flex', gap: '15px', padding: '15px', backgroundColor: '#333', marginBottom: '20px' }}>
+            <Link to="/dashboard" style={{ color: 'white', textDecoration: 'none' }}>Dashboard</Link>
+            <Link to="/appointments" style={{ color: 'white', textDecoration: 'none' }}>Atenciones</Link>
+            <Link to="/catalog" style={{ color: 'white', textDecoration: 'none' }}>Catálogo</Link>
+            <Link to="/reports" style={{ color: 'white', textDecoration: 'none' }}>Reportería</Link>
+            <Link to="/audit" style={{ color: 'white', textDecoration: 'none' }}>Auditoría</Link>
+            <div style={{ marginLeft: 'auto' }}>
+              <button onClick={handleLogout} style={{ padding: '5px 10px' }}>Cerrar Sesión</button>
+            </div>
+          </nav>
+        </AuthenticatedTemplate>
 
-        {/* Configuración de Rutas (Pantallas) */}
         <Routes>
-          {/* Ruta Pública: Login */}
+          {/* Ruta Pública */}
           <Route path="/" element={
             <>
               <AuthenticatedTemplate>
@@ -41,12 +51,12 @@ function App() {
             </>
           } />
           
-          {/* Ruta Privada (Guard): Dashboard */}
-          <Route path="/dashboard" element={
-            <AuthenticatedTemplate>
-              <Dashboard />
-            </AuthenticatedTemplate>
-          } />
+          {/* Rutas Privadas */}
+          <Route path="/dashboard" element={<AuthenticatedTemplate><Dashboard /></AuthenticatedTemplate>} />
+          <Route path="/appointments" element={<AuthenticatedTemplate><Appointments /></AuthenticatedTemplate>} />
+          <Route path="/catalog" element={<AuthenticatedTemplate><Catalog /></AuthenticatedTemplate>} />
+          <Route path="/reports" element={<AuthenticatedTemplate><Reports /></AuthenticatedTemplate>} />
+          <Route path="/audit" element={<AuthenticatedTemplate><Audit /></AuthenticatedTemplate>} />
         </Routes>
       </div>
     </Router>
