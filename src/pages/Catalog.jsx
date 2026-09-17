@@ -114,28 +114,62 @@ export default function Catalog() {
     e.preventDefault();
     if (!nuevoCupo.especialidad) {
         alert("Por favor, seleccione una prestación antes de guardar.");
-        return; // Detiene la ejecución
+        return;
     }
-    const payload = {
-        boxId: boxSeleccionado.id,
-        fechaHoraInicio: nuevoCupo.hora, 
-        rut: nuevoCupo.rut,
-        paciente: nuevoCupo.paciente,
-        especialidad: nuevoCupo.especialidad
-    };
-    try {
-        const res = await api.post('/catalog/cupos', payload);
-        setCupos([...cupos, res.data]);
-        setModoNuevo(false);
-        setNuevoCupo({ rut: '', paciente: '', hora: '08:00', especialidad: prestaciones[0]?.nombre || '' });
-    } catch (err) {
-        console.error("Error al registrar el cupo en el backend", err);
-        alert("No se pudo guardar el cupo en la base de datos.");
-        const citaFallback = { id: Date.now(), ...payload };
-        setCupos([...cupos, citaFallback]);
-    }
-};
 
+    // 1. Formatear horas para que coincidan con LocalDateTime de Java
+    // (Usamos la fecha de hoy para estandarizar el laboratorio)
+    const hoy = new Date().toISOString().split('T')[0]; 
+    const fechaHoraInicio = `${hoy}T${nuevoCupo.hora}:00`;
+    
+    // Calcular 30 minutos de duración para la hora de fin
+    const fechaFinObj = new Date(`${hoy}T${nuevoCupo.hora}:00`);
+    fechaFinObj.setMinutes(fechaFinObj.getMinutes() + 30);
+    const horaFinFormat = String(fechaFinObj.getHours()).padStart(2, '0') + ':' + String(fechaFinObj.getMinutes()).padStart(2, '0');
+    const fechaHoraFin = `${hoy}T${horaFinFormat}:00`;
+
+    // 2. Armar el Payload EXACTO para Cupo.java
+    const payloadCupo = {
+            box: { id: boxSeleccionado.id }, // Se pasa como objeto por la relación ManyToOne
+            fechaHoraInicio: fechaHoraInicio,
+            fechaHoraFin: fechaHoraFin,
+            disponible: false // Queda ocupado inmediatamente
+        };
+
+        try {
+            const resCupo = await api.post('/catalog/cupos', payloadCupo);
+            const cupoGenerado = resCupo.data;
+
+            const prestacionObj = prestaciones.find(p => p.nombre === nuevoCupo.especialidad);
+
+            const payloadAtencion = {
+                pacienteId: nuevoCupo.rut, // Usamos el RUT como ID del paciente
+                prestacionId: prestacionObj ? prestacionObj.id : 1,
+                cupoId: cupoGenerado.id,
+                estado: 'CONFIRMADA',
+                fechaCreacion: fechaCreacionJava
+            };
+            
+            await api.post('/appointments', payloadAtencion);
+
+            const citaVisual = {
+                id: cupoGenerado.id,
+                boxId: boxSeleccionado.id,
+                fechaHoraInicio: nuevoCupo.hora,
+                rut: nuevoCupo.rut,
+                paciente: nuevoCupo.paciente,
+                especialidad: nuevoCupo.especialidad
+            };
+
+            setCupos([...cupos, citaVisual]);
+            setModoNuevo(false);
+            setNuevoCupo({ rut: '', paciente: '', hora: '08:00', especialidad: '' });
+
+        } catch (err) {
+            console.error("Detalle del error:", err);
+            alert("Ocurrió un error al guardar en la base de datos. Revisa la consola.");
+        }
+    };
     const isHoraOcupada = (horaEvaluar, boxIdEvaluar, ignorarCupoId = null) => cupos.some(c => c.boxId === boxIdEvaluar && c.fechaHoraInicio === horaEvaluar && c.id !== ignorarCupoId);
     const agendaActual = boxSeleccionado ? cupos.filter(c => c.boxId === boxSeleccionado.id).sort((a, b) => a.fechaHoraInicio.localeCompare(b.fechaHoraInicio)) : [];
 
