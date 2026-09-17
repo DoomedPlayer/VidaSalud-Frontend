@@ -46,7 +46,7 @@ jobs:
             sudo docker pull $IMAGE_URI
             sudo docker stop vidasalud-frontend || true
             sudo docker rm vidasalud-frontend || true
-            sudo docker run -d --name vidasalud-frontend -p 80:80 --restart always $IMAGE_URI
+            sudo docker run -d --name vidasalud-frontend -p 80:80 -p 443:443 --restart always $IMAGE_URI
             sudo docker system prune -af
           '
           
