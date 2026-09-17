@@ -141,6 +141,9 @@ export default function Catalog() {
             const cupoGenerado = resCupo.data;
 
             const prestacionObj = prestaciones.find(p => p.nombre === nuevoCupo.especialidad);
+            const fechaActualLocal = new Date();
+            fechaActualLocal.setMinutes(fechaActualLocal.getMinutes() - fechaActualLocal.getTimezoneOffset());
+            const fechaCreacionJava = fechaActualLocal.toISOString().slice(0, 19);
 
             const payloadAtencion = {
                 pacienteId: nuevoCupo.rut, // Usamos el RUT como ID del paciente
