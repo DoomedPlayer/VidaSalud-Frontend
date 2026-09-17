@@ -12,57 +12,64 @@ export default function Reports() {
     const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleTimeString());
     const [errorBackend, setErrorBackend] = useState(false);
 
-    const fetchDatos = async () => {
+   const fetchDatos = async () => {
         setIsRefreshing(true);
         setErrorBackend(false);
         try {
-        const [kpisResponse, servicesResponse] = await Promise.all([
-            api.get('/report/kpis/today'),
-            api.get('/report/top-services')
-        ]);
+            // 1. Llamamos a los TRES endpoints en paralelo
+            const [kpisResponse, servicesResponse, catalogServicesRes] = await Promise.all([
+                api.get('/report/kpis/today'),
+                api.get('/report/top-services'),
+                api.get('/catalog/services')
+            ]);
 
-        if (kpisResponse.data) {
-            const kpiData = kpisResponse.data;
-            const totalAtenciones = (kpiData.atencionesSolicitadas || 0) + (kpiData.atencionesConfirmadas || 0);
-            
-            setKpis({
-                atencionesHoy: totalAtenciones,
-                variacionAtenciones: `Cerradas: ${kpiData.atencionesCerradas || 0}`, 
-                tiempoEspera: kpiData.tiempoPromedioEsperaMinutos || 0,
-                estadoEspera: "Minutos en promedio",
-                boxesOperativos: 4, 
-                totalBoxes: 4,
-                estadoBoxes: "Disponibles"
-            });
-        }
-
-        if (servicesResponse.data && servicesResponse.data.length > 0) {
-            const servicesData = servicesResponse.data;
-
-            const prestacionDict = {
-                1: { nombre: 'Medicina General', color: '#0f766e' },
-                2: { nombre: 'Cardiología', color: '#0284c7' },
-                3: { nombre: 'Pediatría', color: '#059669' },
-                4: { nombre: 'Urgencia Dental', color: '#d97706' }
-            };
-
-            const totalSolicitudes = servicesData.reduce((acc, curr) => acc + curr.cantidadSolicitudes, 0);
-
-            const mappedServices = servicesData.map(item => {
-                const infoPrestacion = prestacionDict[item.prestacionId] || { nombre: `Servicio #${item.prestacionId}`, color: '#8b5cf6' };
-                const porcentajeCalc = totalSolicitudes > 0 ? Math.round((item.cantidadSolicitudes / totalSolicitudes) * 100) : 0;
+            if (kpisResponse.data) {
+                const kpiData = kpisResponse.data;
+                const totalAtenciones = (kpiData.atencionesSolicitadas || 0) + (kpiData.atencionesConfirmadas || 0);
                 
-                return {
-                    nombre: infoPrestacion.nombre,
-                    porcentaje: porcentajeCalc,
-                    color: infoPrestacion.color
-                };
-            });
+                setKpis({
+                    atencionesHoy: totalAtenciones,
+                    variacionAtenciones: `Cerradas: ${kpiData.atencionesCerradas || 0}`, 
+                    tiempoEspera: kpiData.tiempoPromedioEsperaMinutos || 0,
+                    estadoEspera: "Minutos en promedio",
+                    boxesOperativos: 3, 
+                    totalBoxes: 3,
+                    estadoBoxes: "Disponibles"
+                });
+            }
+
+            // 3. Mapeo de Demanda dinámico
+            if (servicesResponse.data && servicesResponse.data.length > 0) {
+                const servicesData = servicesResponse.data;
+                const catalogoData = catalogServicesRes.data || [];
+
+                const prestacionDict = {};
+                const paletaColores = ['#0f766e', '#0284c7', '#059669', '#d97706', '#8b5cf6', '#e11d48'];
+                
+                catalogoData.forEach((prestacion, index) => {
+                    prestacionDict[prestacion.id] = {
+                        nombre: prestacion.nombre,
+                        color: paletaColores[index % paletaColores.length] 
+                    };
+                });
+
+                const totalSolicitudes = servicesData.reduce((acc, curr) => acc + curr.cantidadSolicitudes, 0);
+
+                const mappedServices = servicesData.map(item => {
+                    const infoPrestacion = prestacionDict[item.prestacionId] || { nombre: `Servicio No Identificado (#${item.prestacionId})`, color: '#94a3b8' };
+                    const porcentajeCalc = totalSolicitudes > 0 ? Math.round((item.cantidadSolicitudes / totalSolicitudes) * 100) : 0;
+                    
+                    return {
+                        nombre: infoPrestacion.nombre,
+                        porcentaje: porcentajeCalc,
+                        color: infoPrestacion.color
+                    };
+                });
+                
+                setTopServices(mappedServices);
+            }
             
-            setTopServices(mappedServices);
-        }
-        
-        setLastUpdate(new Date().toLocaleTimeString());
+            setLastUpdate(new Date().toLocaleTimeString());
         } catch (error) {
             console.error("No se pudo conectar al BFF. Usando datos de prueba.", error);
             setErrorBackend(true);
