@@ -46,7 +46,7 @@ export default function ReceptionistPortal() {
         };
 
         fetchAtenciones();
-    }, [api]);
+    }, []);
 
     // Función que hace el PUT al backend de Nicolás para cambiar el estado de la cita
     const actualizarEstado = async (id, nuevoEstado) => {

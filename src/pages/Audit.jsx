@@ -47,7 +47,7 @@ export default function Audit() {
         };
 
         fetchAuditorias();
-    }, [api]); 
+    }, []); 
 
     // --- DATOS DE RESPALDO (Modo Offline) ---
     const mockEventos = [
