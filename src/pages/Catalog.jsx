@@ -112,6 +112,10 @@ export default function Catalog() {
 
     const handleCrearCita = async (e) => {
     e.preventDefault();
+    if (!nuevoCupo.especialidad) {
+        alert("Por favor, seleccione una prestación antes de guardar.");
+        return; // Detiene la ejecución
+    }
     const payload = {
         boxId: boxSeleccionado.id,
         fechaHoraInicio: nuevoCupo.hora, 
@@ -175,7 +179,7 @@ export default function Catalog() {
                                 <form onSubmit={handleCrearCita} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                                     <div style={{ flex: '1 1 120px' }}><label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '0.3rem' }}>RUT</label><input type="text" value={nuevoCupo.rut} onChange={e => setNuevoCupo({...nuevoCupo, rut: e.target.value})} style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1' }} required /></div>
                                     <div style={{ flex: '2 1 180px' }}><label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '0.3rem' }}>Paciente</label><input type="text" value={nuevoCupo.paciente} onChange={e => setNuevoCupo({...nuevoCupo, paciente: e.target.value})} style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1' }} required /></div>
-                                    <div style={{ flex: '2 1 150px' }}><label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '0.3rem' }}>Prestación</label><select value={nuevoCupo.especialidad} onChange={e => setNuevoCupo({...nuevoCupo, especialidad: e.target.value})} style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}>{prestaciones.map(p => <option key={p.id} value={p.nombre}>{p.nombre}</option>)}</select></div>
+                                    <div style={{ flex: '2 1 150px' }}><label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '0.3rem' }}>Prestación</label><select value={nuevoCupo.especialidad} onChange={e => setNuevoCupo({...nuevoCupo, especialidad: e.target.value})} style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}><option value="" disabled>Seleccione una prestación...</option>{prestaciones.map(p => <option key={p.id} value={p.nombre}>{p.nombre}</option>)}</select></div>
                                     <div style={{ flex: '1 1 100px' }}><label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '0.3rem' }}>Hora</label><select value={nuevoCupo.hora} onChange={e => setNuevoCupo({...nuevoCupo, hora: e.target.value})} style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}>{horariosFijos.map(h => <option key={h} value={h} disabled={isHoraOcupada(h, boxSeleccionado.id)}>{h} {isHoraOcupada(h, boxSeleccionado.id) ? '(Ocupado)' : ''}</option>)}</select></div>
                                     <div style={{ display: 'flex', gap: '0.5rem' }}><button type="submit" style={{ backgroundColor: '#0f766e', color: 'white', border: 'none', padding: '0.6rem 1.2rem', borderRadius: '6px', cursor: 'pointer' }}>Guardar</button><button type="button" onClick={() => setModoNuevo(false)} style={{ backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '0.6rem 1.2rem', borderRadius: '6px', cursor: 'pointer' }}>Cancelar</button></div>
                                 </form>
