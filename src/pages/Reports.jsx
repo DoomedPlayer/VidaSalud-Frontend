@@ -16,7 +16,6 @@ export default function Reports() {
         setIsRefreshing(true);
         setErrorBackend(false);
         try {
-            // 1. Llamamos a los TRES endpoints en paralelo
             const [kpisResponse, servicesResponse, catalogServicesRes] = await Promise.all([
                 api.get('/report/kpis/today'),
                 api.get('/report/top-services'),
