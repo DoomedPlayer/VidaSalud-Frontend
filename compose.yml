@@ -1,0 +1,8 @@
+version: '3.8'
+services:
+  frontend-svc:
+    build: .
+    container_name: vidasalud-frontend
+    ports:
+      - "80:80"
+    restart: always

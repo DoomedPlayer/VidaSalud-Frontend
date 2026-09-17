@@ -1,56 +1,42 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { useMsal, AuthenticatedTemplate, UnauthenticatedTemplate } from "@azure/msal-react";
-import { loginRequest } from "./authConfig";
-import Dashboard from "./pages/Dashboard";
-import './App.css';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useIsAuthenticated, useMsal } from '@azure/msal-react';
 
-function App() {
-  const { instance } = useMsal();
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import ReceptionistPortal from './pages/ReceptionistPortal';
+import PatientPortal from './pages/PatientPortal';
+import Catalog from './pages/Catalog';
+import Reports from './pages/Reports';
+import Audit from './pages/Audit';
+import ProtectedRoute from './components/ProtectedRoute';
 
-  const handleLogin = () => {
-    instance.loginRedirect(loginRequest);
-  };
+export default function App() {
+    const isAuthenticated = useIsAuthenticated();
+    const { inProgress } = useMsal(); 
 
-  const handleLogout = () => {
-    instance.logoutRedirect({ postLogoutRedirectUri: "/" });
-  };
+    if (inProgress !== 'none') {
+        return (
+            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f5f9' }}>
+                <h3 style={{ color: '#0f766e', fontFamily: 'sans-serif' }}>Procesando autenticación con Microsoft...</h3>
+            </div>
+        );
+    }
 
-  return (
-    <Router>
-      <div className="App">
-        {/* Barra de navegación superior */}
-        <nav style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px' }}>
-          <AuthenticatedTemplate>
-            <button onClick={handleLogout}>Cerrar Sesión</button>
-          </AuthenticatedTemplate>
-        </nav>
+    return (
+        <Router>
+            <Routes>
+                <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} />
+                
+                {/* AQUI SE ACTUALIZARON LOS ROLES A: Recepcionista y Paciente */}
+                <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['Admin', 'Recepcionista', 'Paciente', 'Auditor']}><Dashboard /></ProtectedRoute>} />
+                <Route path="/reception" element={<ProtectedRoute allowedRoles={['Admin', 'Recepcionista']}><ReceptionistPortal /></ProtectedRoute>} />
+                <Route path="/patient-portal" element={<ProtectedRoute allowedRoles={['Paciente']}><PatientPortal /></ProtectedRoute>} />
+                <Route path="/catalog" element={<ProtectedRoute allowedRoles={['Admin', 'Recepcionista']}><Catalog /></ProtectedRoute>} />
+                <Route path="/reports" element={<ProtectedRoute allowedRoles={['Admin']}><Reports /></ProtectedRoute>} />
+                <Route path="/audit" element={<ProtectedRoute allowedRoles={['Admin', 'Auditor']}><Audit /></ProtectedRoute>} />
 
-        {/* Configuración de Rutas (Pantallas) */}
-        <Routes>
-          {/* Ruta Pública: Login */}
-          <Route path="/" element={
-            <>
-              <AuthenticatedTemplate>
-                <Navigate to="/dashboard" />
-              </AuthenticatedTemplate>
-              
-              <UnauthenticatedTemplate>
-                <h1>Caso VidaSalud</h1>
-                <button onClick={handleLogin}>Iniciar sesión con Microsoft</button>
-              </UnauthenticatedTemplate>
-            </>
-          } />
-          
-          {/* Ruta Privada (Guard): Dashboard */}
-          <Route path="/dashboard" element={
-            <AuthenticatedTemplate>
-              <Dashboard />
-            </AuthenticatedTemplate>
-          } />
-        </Routes>
-      </div>
-    </Router>
-  );
+                <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
+            </Routes>
+        </Router>
+    );
 }
-
-export default App;
