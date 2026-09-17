@@ -24,20 +24,18 @@ export default function PatientPortal() {
             setIsLoading(true);
             setErrorBackend(false);
             try {
-                // Le pasamos el correo como pacienteId (o podríamos filtrar en el backend)
-                const res = await api.get('/appointments');
-                
-                // Mapeamos lo que llega del backend (Atencion.java) a la vista
-                const dataMapeada = res.data.map(item => ({
-                    id: item.id,
-                    especialidad: item.prestacionNombre || 'Medicina General', // Asumiendo que el BFF cruza el nombre
+                const res = await api.post('/appointments', payload);
+
+                const nuevaCita = {
+                    id: res.data.id,
+                    especialidad: especialidad, 
                     medico: 'Dr. Asignado', 
-                    sede: item.boxCentroAtencion || 'Sede San Bernardo',
-                    fecha: item.fechaCreacion ? item.fechaCreacion.split('T')[0] : 'N/A',
-                    hora: item.fechaCreacion ? item.fechaCreacion.split('T')[1].substring(0,5) : 'N/A',
-                    estado: item.estado || 'SOLICITADA' // Enum: SOLICITADA, CONFIRMADA...
-                }));
-                setMisHoras(dataMapeada);
+                    sede: 'Sede San Bernardo', 
+                    fecha: fechaReserva,
+                    hora: horaReserva,
+                    estado: res.data.estado
+                };
+                setMisHoras([nuevaCita, ...misHoras]);
             } catch (error) {
                 console.warn("Backend no disponible. Cargando modo offline.");
                 setErrorBackend(true);

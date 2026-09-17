@@ -111,14 +111,26 @@ export default function Catalog() {
     };
 
     const handleCrearCita = async (e) => {
-        e.preventDefault();
-        // En un escenario real, aquí se crearía un Cupo en el backend. 
-        // Para la demo, lo simulamos en memoria para no complicar el payload con el BFF aún.
-        const cita = { id: Date.now(), boxId: boxSeleccionado.id, fechaHoraInicio: nuevoCupo.hora, rut: nuevoCupo.rut, paciente: nuevoCupo.paciente, especialidad: nuevoCupo.especialidad };
-        setCupos([...cupos, cita]);
+    e.preventDefault();
+    const payload = {
+        boxId: boxSeleccionado.id,
+        fechaHoraInicio: nuevoCupo.hora, 
+        rut: nuevoCupo.rut,
+        paciente: nuevoCupo.paciente,
+        especialidad: nuevoCupo.especialidad
+    };
+    try {
+        const res = await api.post('/catalog/cupos', payload);
+        setCupos([...cupos, res.data]);
         setModoNuevo(false);
         setNuevoCupo({ rut: '', paciente: '', hora: '08:00', especialidad: prestaciones[0]?.nombre || '' });
-    };
+    } catch (err) {
+        console.error("Error al registrar el cupo en el backend", err);
+        alert("No se pudo guardar el cupo en la base de datos.");
+        const citaFallback = { id: Date.now(), ...payload };
+        setCupos([...cupos, citaFallback]);
+    }
+};
 
     const isHoraOcupada = (horaEvaluar, boxIdEvaluar, ignorarCupoId = null) => cupos.some(c => c.boxId === boxIdEvaluar && c.fechaHoraInicio === horaEvaluar && c.id !== ignorarCupoId);
     const agendaActual = boxSeleccionado ? cupos.filter(c => c.boxId === boxSeleccionado.id).sort((a, b) => a.fechaHoraInicio.localeCompare(b.fechaHoraInicio)) : [];
