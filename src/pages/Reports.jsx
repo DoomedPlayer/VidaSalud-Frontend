@@ -12,20 +12,57 @@ export default function Reports() {
     const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleTimeString());
     const [errorBackend, setErrorBackend] = useState(false);
 
-    // Función que va a buscar los datos a los endpoints de Nicolás
     const fetchDatos = async () => {
         setIsRefreshing(true);
         setErrorBackend(false);
         try {
-            // Llamamos a los dos endpoints en paralelo
-            const [kpisResponse, servicesResponse] = await Promise.all([
-                api.get('/report/kpis/today'),
-                api.get('/report/top-services')
-            ]);
+        const [kpisResponse, servicesResponse] = await Promise.all([
+            api.get('/report/kpis/today'),
+            api.get('/report/top-services')
+        ]);
+
+        if (kpisResponse.data) {
+            const kpiData = kpisResponse.data;
+            const totalAtenciones = (kpiData.atencionesSolicitadas || 0) + (kpiData.atencionesConfirmadas || 0);
             
-            setKpis(kpisResponse.data);
-            setTopServices(servicesResponse.data);
-            setLastUpdate(new Date().toLocaleTimeString());
+            setKpis({
+                atencionesHoy: totalAtenciones,
+                variacionAtenciones: `Cerradas: ${kpiData.atencionesCerradas || 0}`, 
+                tiempoEspera: kpiData.tiempoPromedioEsperaMinutos || 0,
+                estadoEspera: "Minutos en promedio",
+                boxesOperativos: 4, 
+                totalBoxes: 4,
+                estadoBoxes: "Disponibles"
+            });
+        }
+
+        if (servicesResponse.data && servicesResponse.data.length > 0) {
+            const servicesData = servicesResponse.data;
+
+            const prestacionDict = {
+                1: { nombre: 'Medicina General', color: '#0f766e' },
+                2: { nombre: 'Cardiología', color: '#0284c7' },
+                3: { nombre: 'Pediatría', color: '#059669' },
+                4: { nombre: 'Urgencia Dental', color: '#d97706' }
+            };
+
+            const totalSolicitudes = servicesData.reduce((acc, curr) => acc + curr.cantidadSolicitudes, 0);
+
+            const mappedServices = servicesData.map(item => {
+                const infoPrestacion = prestacionDict[item.prestacionId] || { nombre: `Servicio #${item.prestacionId}`, color: '#8b5cf6' };
+                const porcentajeCalc = totalSolicitudes > 0 ? Math.round((item.cantidadSolicitudes / totalSolicitudes) * 100) : 0;
+                
+                return {
+                    nombre: infoPrestacion.nombre,
+                    porcentaje: porcentajeCalc,
+                    color: infoPrestacion.color
+                };
+            });
+            
+            setTopServices(mappedServices);
+        }
+        
+        setLastUpdate(new Date().toLocaleTimeString());
         } catch (error) {
             console.error("No se pudo conectar al BFF. Usando datos de prueba.", error);
             setErrorBackend(true);
