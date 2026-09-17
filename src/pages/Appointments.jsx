@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import {useApi} from '../hooks/useApi'
 
 export default function Appointments() {
+    const api = useApi();
     const [atenciones, setAtenciones] = useState([
         { id: 101, paciente: 'Carlos Mendoza', especialidad: 'Medicina General', box: 'Box 03', estado: 'SOLICITADA' },
         { id: 102, paciente: 'Ana Torres', especialidad: 'Cardiología', box: 'Box 01', estado: 'CONFIRMADA' },
@@ -11,21 +13,44 @@ export default function Appointments() {
     const [especialidad, setEspecialidad] = useState('Medicina General');
     const [box, setBox] = useState('Box 01');
 
-    const registrarAtencion = (e) => {
-        e.preventDefault();
-        if (!nuevoPaciente.trim()) return;
+    const registrarAtencion = async (e) => {
+    e.preventDefault();
+    if (!nuevoPaciente.trim()) return;
 
-        const nueva = {
-            id: Math.floor(Math.random() * 900) + 100,
-            paciente: nuevoPaciente,
-            especialidad,
-            box,
-            estado: 'SOLICITADA'
+    // 1. Traducir textos del formulario a IDs para Java (Atencion.java)
+    const mapeoPrestacion = {
+        'Medicina General': 1,
+        'Cardiología': 2,
+        'Pediatría': 3,
+        'Urgencia Dental': 4
+    };
+    const numBox = parseInt(box.replace('Box 0', '')); 
+
+    const payloadJava = {
+        pacienteId: nuevoPaciente, 
+        prestacionId: mapeoPrestacion[especialidad] || 1,
+        cupoId: numBox
+    };
+
+    try {
+        const response = await api.post('/appointments', payloadJava);
+
+        const nuevaCitaVisual = {
+            id: response.data.id,
+            paciente: response.data.pacienteId,
+            especialidad: especialidad, 
+            box: box,                  
+            estado: response.data.estado
         };
 
-        setAtenciones([nueva, ...atenciones]);
+        setAtenciones([nuevaCitaVisual, ...atenciones]);
         setNuevoPaciente('');
-    };
+        
+    } catch (error) {
+        console.error("Error al registrar la atención:", error);
+        alert("No se pudo conectar con el servidor para registrar la cita.");
+    }
+};
 
     const cambiarEstado = (id, nuevoEstado) => {
         setAtenciones(atenciones.map(att => att.id === id ? { ...att, estado: nuevoEstado } : att));
