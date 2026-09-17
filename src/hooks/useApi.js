@@ -2,7 +2,7 @@ import axios from 'axios';
 import { useMsal } from '@azure/msal-react';
 import { loginRequest } from '../authConfig';
 
-const API_BASE_URL = 'http://localhost:8080/api/bff'; // <-- Ajustado al controlador de Nicolás 
+const API_BASE_URL = 'http://98.80.13.95:8080/api/bff'; // <-- Ajustado al controlador de Nicolás 
 
 export const useApi = () => {
     const { instance, accounts } = useMsal();
