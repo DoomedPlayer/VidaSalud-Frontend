@@ -210,19 +210,6 @@ export default function Catalog() {
         setPrecioEditando({ id: null, nuevoPrecio: '' });
     };
 
-    const handleEliminarPrestacion = async (id) => {
-        const confirmar = window.confirm("¿Estás seguro de que deseas eliminar esta prestación?");
-        if (!confirmar) return;
-
-        try {
-            await api.delete(`/catalog/services/${id}`);
-            setPrestaciones(prestaciones.filter(p => p.id !== id));
-        } catch (err) {
-            console.warn("Eliminando prestación en memoria (Modo Offline)");
-            setPrestaciones(prestaciones.filter(p => p.id !== id));
-        }
-    };
-
     if (isLoading) return <div style={{ padding: '2rem' }}>Cargando catálogo...</div>;
 
     return (
@@ -406,17 +393,11 @@ export default function Catalog() {
                                             : `$ ${p.precio.toLocaleString('es-CL')}`
                                         }
                                     </td>
-                                    <td style={{ padding: '1rem', textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                                    <td style={{ padding: '1rem', textAlign: 'right' }}>
                                         {precioEditando.id === p.id 
                                             ? <button onClick={() => guardarEdicionPrecio(p.id)} style={{ backgroundColor: '#059669', color: 'white', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer' }}>Guardar</button> 
                                             : <button onClick={() => iniciarEdicionPrecio(p)} style={{ backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer' }}>Editar Precio</button>
                                         }
-                                        <button 
-                                            onClick={() => handleEliminarPrestacion(p.id)} 
-                                            style={{ backgroundColor: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}
-                                        >
-                                            Eliminar
-                                        </button>
                                     </td>
                                 </tr>
                             ))}
