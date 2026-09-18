@@ -106,7 +106,8 @@ export default function Audit() {
                         <select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)} style={{ width: '100%', padding: '0.7rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', boxSizing: 'border-box', backgroundColor: '#fff' }}>
                             <option value="">Todos los eventos</option>
                             <option value="LOGIN">Autenticación (Login)</option>
-                            <option value="CITA">Atenciones (Agendar/Confirmar)</option>
+                            <option value="CITA">Atenciones (Agendar)</option>
+                            <option value="CAMBIO_ESTADO">Atenciones (Cambios de Estado)</option>
                             <option value="CATALOG">Catálogo (Prestaciones)</option>
                         </select>
                     </div>
