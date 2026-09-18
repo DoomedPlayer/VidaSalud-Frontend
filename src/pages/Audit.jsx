@@ -13,6 +13,15 @@ export default function Audit() {
     const [filtroFecha, setFiltroFecha] = useState('');
     const [filtroTipo, setFiltroTipo] = useState('');
 
+   const normalizarFecha = (fechaOriginal) => {
+        if (!fechaOriginal) return 'N/A';
+        if (Array.isArray(fechaOriginal)) {
+            const [y, m, d, h, min, sec] = fechaOriginal;
+            return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}T${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}:${sec ? String(sec).padStart(2,'0') : '00'}`;
+        }
+        return String(fechaOriginal); 
+    };
+
     useEffect(() => {
         const fetchAuditorias = async () => {
             setIsLoading(true);
@@ -20,10 +29,10 @@ export default function Audit() {
             try {
                 const response = await api.get('/audit');
                 
-                // MAGIA AQUÍ: Traducimos las variables de Java (EventoAuditoria.java) a las de React
                 const dataMapeada = response.data.map(item => {
-                    // Java envía "2026-09-16T15:30:00", lo partimos por la 'T' para separar fecha y hora
-                    const [fechaFormateada, horaFormateada] = item.fechaHora ? item.fechaHora.split('T') : ['N/A', 'N/A'];
+                    // Pasamos la fecha por el normalizador antes del split
+                    const fechaSegura = normalizarFecha(item.fechaHora);
+                    const [fechaFormateada, horaFormateada] = fechaSegura !== 'N/A' ? fechaSegura.split('T') : ['N/A', 'N/A'];
                     
                     return {
                         id: item.id || Math.random(),
@@ -33,7 +42,7 @@ export default function Audit() {
                         hora: horaFormateada,
                         ip: item.origenIp || 'N/A',
                         modulo: item.entidadId || 'Sistema',
-                        detalles: item.detalles || ''
+                        detalles: item.detalles || 'Sin detalles adicionales'
                     };
                 });
                 
@@ -47,7 +56,7 @@ export default function Audit() {
         };
 
         fetchAuditorias();
-    }, []); 
+    }, []);
 
     // --- DATOS DE RESPALDO (Modo Offline) ---
     const mockEventos = [
@@ -138,6 +147,9 @@ export default function Audit() {
                                     </div>
                                     <div style={{ fontSize: '0.9rem', color: '#475569' }}>
                                         Usuario: <strong style={{ color: '#334155' }}>{ev.usuario}</strong> | IP Origen: <code style={{ color: '#0f766e', backgroundColor: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>{ev.ip}</code>
+                                    </div>
+                                    <div style={{ marginTop: '0.75rem', padding: '0.75rem', backgroundColor: '#f1f5f9', borderRadius: '8px', borderLeft: '3px solid #0ea5e9', fontSize: '0.85rem', color: '#334155' }}>
+                                        <strong>Detalle de auditoría:</strong> {ev.detalles}
                                     </div>
                                 </div>
                             </div>
