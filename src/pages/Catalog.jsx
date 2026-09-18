@@ -21,41 +21,69 @@ export default function Catalog() {
     const [modalConfirmar, setModalConfirmar] = useState({ isOpen: false, cupoId: null });
     const [modoNuevo, setModoNuevo] = useState(false);
     const [nuevoCupo, setNuevoCupo] = useState({ rut: '', paciente: '', hora: '08:00', especialidad: '' });
+    const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date().toISOString().split('T')[0]);
 
-    const horariosFijos = ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30'];
+    const horariosFijos = [
+        '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', 
+        '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', 
+        '15:30', '16:00', '16:30', '17:00'
+    ];
 
     // --- 1. CARGA INICIAL DESDE EL BACKEND ---
     useEffect(() => {
-        const fetchCatalogData = async () => {
-            setIsLoading(true);
-            setErrorBackend(false);
-            try {
-                // Hacemos las 3 peticiones al BFF en paralelo
-                const [servicesRes, boxesRes, cuposRes] = await Promise.all([
-                    api.get('/catalog/services'),
-                    api.get('/catalog/boxes'),
-                    api.get('/catalog/cupos')
-                ]);
-                
-                setPrestaciones(servicesRes.data || []);
-                setBoxesConfig(boxesRes.data || []);
-                setCupos(cuposRes.data || []);
-                
-                if (boxesRes.data && boxesRes.data.length > 0) {
-                    setBoxSeleccionado(boxesRes.data[0]);
-                }
-            } catch (err) {
-                console.error("Error conectando al BFF. Activando modo offline.", err);
-                setErrorBackend(true);
-                // Cargar datos de prueba si falla el backend
-                cargarDatosDePrueba();
-            } finally {
-                setIsLoading(false);
-            }
-        };
+    const fetchCatalogData = async () => {
+        setIsLoading(true);
+        setErrorBackend(false);
+        try {
+            const [servicesRes, boxesRes, cuposRes, atencionesRes] = await Promise.all([
+                api.get('/catalog/services'),
+                api.get('/catalog/boxes'),
+                api.get('/catalog/cupos'),
+                api.get('/appointments') 
+            ]);
+            
+            const prestacionesData = servicesRes.data || [];
+            const boxesData = boxesRes.data || [];
+            const cuposRaw = cuposRes.data || [];
+            const atencionesData = atencionesRes.data || [];
 
-        fetchCatalogData();
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+            const cuposEnriquecidos = cuposRaw.map(cupo => {
+                const atencionVinculada = atencionesData.find(a => a.cupoId === cupo.id);
+                
+                let nombreEspecialidad = '';
+                if (atencionVinculada) {
+                    const prestacionObj = prestacionesData.find(p => p.id === atencionVinculada.prestacionId);
+                    nombreEspecialidad = prestacionObj ? prestacionObj.nombre : '';
+                }
+
+                return {
+                    id: cupo.id,
+                    boxId: cupo.box ? cupo.box.id : null,
+                    fechaHoraInicio: cupo.fechaHoraInicio,
+                    rut: atencionVinculada ? atencionVinculada.pacienteId : '',
+                    paciente: atencionVinculada ? atencionVinculada.pacienteId : '', 
+                    especialidad: nombreEspecialidad
+                };
+            });
+            
+            setPrestaciones(prestacionesData);
+            setBoxesConfig(boxesData);
+            setCupos(cuposEnriquecidos);
+            
+            if (boxesData.length > 0) {
+                setBoxSeleccionado(boxesData[0]);
+            }
+        } catch (err) {
+            console.error("Error conectando al BFF.", err);
+            setErrorBackend(true);
+            cargarDatosDePrueba(); 
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    fetchCatalogData();
+}, []);
 
     const cargarDatosDePrueba = () => {
         const mockBoxes = [
@@ -173,9 +201,22 @@ export default function Catalog() {
             alert("Ocurrió un error al guardar en la base de datos. Revisa la consola.");
         }
     };
-    const isHoraOcupada = (horaEvaluar, boxIdEvaluar, ignorarCupoId = null) => cupos.some(c => c.boxId === boxIdEvaluar && c.fechaHoraInicio === horaEvaluar && c.id !== ignorarCupoId);
-    const agendaActual = boxSeleccionado ? cupos.filter(c => c.boxId === boxSeleccionado.id).sort((a, b) => a.fechaHoraInicio.localeCompare(b.fechaHoraInicio)) : [];
-
+    const obtenerCitaEnSlot = (horaSlot) => {
+        return cupos.find(c => {
+            if (c.boxId !== boxSeleccionado.id) return false;
+            if (!c.fechaHoraInicio) return false;
+            
+            // Separar la fecha y la hora que vienen del backend
+            const [fechaBD, horaBDCompleta] = c.fechaHoraInicio.split('T');
+            const horaBDCorta = horaBDCompleta ? horaBDCompleta.substring(0, 5) : '';
+            
+            return fechaBD === fechaSeleccionada && horaBDCorta === horaSlot;
+        });
+    };
+    const abrirAgendamiento = (hora) => {
+        setNuevoCupo({ rut: '', paciente: '', hora: hora, especialidad: '' });
+        setModoNuevo(true);
+        };
     if (isLoading) {
         return <div style={{ padding: '3rem', textAlign: 'center', color: '#0f766e', fontWeight: 'bold' }}>Cargando datos del Catálogo y Boxes... ⏳</div>;
     }
@@ -205,9 +246,21 @@ export default function Catalog() {
                     </div>
 
                     <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '2rem' }}>
+                        {/* Controles de la Agenda */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem' }}>
-                            <div><h2 style={{ margin: 0, color: '#1e293b' }}>Agenda y Lista de Espera</h2><p style={{ margin: '0.25rem 0 0 0', color: '#64748b' }}>Gestionando turnos para: <strong>{boxSeleccionado.codigo}</strong></p></div>
-                            {!modoNuevo && <button onClick={() => setModoNuevo(true)} style={{ backgroundColor: '#0284c7', color: 'white', border: 'none', padding: '0.6rem 1.2rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>+ Cita Directa</button>}
+                            <div>
+                                <h2 style={{ margin: 0, color: '#1e293b' }}>Agenda Diaria</h2>
+                                <p style={{ margin: '0.25rem 0 0 0', color: '#64748b' }}>Gestionando turnos para: <strong>{boxSeleccionado.codigo}</strong></p>
+                            </div>
+                            <div>
+                                <label style={{ marginRight: '1rem', fontWeight: '600', fontSize: '0.9rem' }}>Fecha de Agenda:</label>
+                                <input 
+                                    type="date" 
+                                    value={fechaSeleccionada} 
+                                    onChange={(e) => setFechaSeleccionada(e.target.value)}
+                                    style={{ padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                                />
+                            </div>
                         </div>
 
                         {modoNuevo && (
@@ -225,18 +278,43 @@ export default function Catalog() {
 
                         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.95rem' }}>
                             <thead>
-                                <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}><th style={{ padding: '1rem' }}>Hora</th><th style={{ padding: '1rem' }}>RUT</th><th style={{ padding: '1rem' }}>Paciente</th><th style={{ padding: '1rem' }}>Especialidad</th><th style={{ padding: '1rem' }}>Estado</th></tr>
+                                <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                                    <th style={{ padding: '1rem', width: '120px' }}>Hora</th>
+                                    <th style={{ padding: '1rem' }}>Paciente</th>
+                                    <th style={{ padding: '1rem' }}>Especialidad</th>
+                                    <th style={{ padding: '1rem', textAlign: 'right' }}>Disponibilidad</th>
+                                </tr>
                             </thead>
                             <tbody>
-                                {agendaActual.map(cupo => (
-                                    <tr key={cupo.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                                        <td style={{ padding: '1rem', fontWeight: '700', color: '#0f766e' }}>{cupo.fechaHoraInicio || cupo.hora}</td>
-                                        <td style={{ padding: '1rem' }}>{cupo.rut || 'N/A'}</td>
-                                        <td style={{ padding: '1rem', fontWeight: '600' }}>{cupo.paciente || 'N/A'}</td>
-                                        <td style={{ padding: '1rem' }}>{cupo.especialidad || 'N/A'}</td>
-                                        <td style={{ padding: '1rem' }}><span style={{ backgroundColor: '#d1fae5', color: '#059669', padding: '0.3rem 0.7rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '700' }}>Confirmada</span></td>
-                                    </tr>
-                                ))}
+                                {horariosFijos.map(hora => {
+                                    const citaSlot = obtenerCitaEnSlot(hora);
+                                    
+                                    return (
+                                        <tr key={hora} style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: citaSlot ? '#f8fafc' : '#ffffff' }}>
+                                            <td style={{ padding: '1rem', fontWeight: '700', color: citaSlot ? '#475569' : '#0f766e' }}>{hora} hrs</td>
+                                            
+                                            {citaSlot ? (
+                                                <>
+                                                    <td style={{ padding: '1rem', fontWeight: '600' }}>{citaSlot.paciente || citaSlot.rut}</td>
+                                                    <td style={{ padding: '1rem' }}>{citaSlot.especialidad}</td>
+                                                    <td style={{ padding: '1rem', textAlign: 'right' }}>
+                                                        <span style={{ backgroundColor: '#fee2e2', color: '#ef4444', padding: '0.3rem 0.7rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '700' }}>Ocupado</span>
+                                                    </td>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <td style={{ padding: '1rem', color: '#94a3b8', fontStyle: 'italic' }}>---</td>
+                                                    <td style={{ padding: '1rem', color: '#94a3b8', fontStyle: 'italic' }}>---</td>
+                                                    <td style={{ padding: '1rem', textAlign: 'right' }}>
+                                                        <button onClick={() => abrirAgendamiento(hora)} style={{ backgroundColor: '#0f766e', color: 'white', border: 'none', padding: '0.4rem 1rem', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '0.8rem' }}>
+                                                            + Agendar
+                                                        </button>
+                                                    </td>
+                                                </>
+                                            )}
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
