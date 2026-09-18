@@ -7,7 +7,7 @@ export default function ReceptionistPortal() {
     const api = useApi();
     
     const nombreRecepcionista = accounts[0]?.name?.toUpperCase() || 'RECEPCIONISTA';
-    const boxesDisponibles = ['Box 01', 'Box 02', 'Box 03', 'Box 04'];
+    const [boxesDisponibles, setBoxesDisponibles] = useState(['Box 01', 'Box 02', 'Box 03', 'Box 04']);
     
     const [recepcionQueue, setRecepcionQueue] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -23,11 +23,18 @@ export default function ReceptionistPortal() {
             const [atencionesRes, cuposRes, servicesRes] = await Promise.all([
                 api.get('/appointments'),
                 api.get('/catalog/cupos'),
-                api.get('/catalog/services')
+                api.get('/catalog/services'),
+                api.get('/catalog/boxes')
             ]);
             
             const cuposData = cuposRes.data || [];
             const servicesData = servicesRes.data || [];
+            const boxesData = boxesRes.data || [];
+
+            if (boxesData.length > 0) {
+                    const listaBoxes = boxesData.map(b => b.codigo || b.nombre || String(b));
+                    setBoxesDisponibles(listaBoxes);
+                }
 
             const dataMapeada = atencionesRes.data.map(item => {
                 const cupoAsignado = cuposData.find(c => c.id === item.cupoId);
