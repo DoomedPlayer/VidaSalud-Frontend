@@ -20,18 +20,31 @@ export default function ReceptionistPortal() {
             setIsLoading(true);
             setErrorBackend(false);
             try {
-                const res = await api.get('/appointments');
-                
-                // Mapeo de Atencion.java a la UI de Recepción
-                const dataMapeada = res.data.map(item => ({
+            const [atencionesRes, cuposRes, servicesRes] = await Promise.all([
+                api.get('/appointments'),
+                api.get('/catalog/cupos'),
+                api.get('/catalog/services')
+            ]);
+            
+            const cuposData = cuposRes.data || [];
+            const servicesData = servicesRes.data || [];
+
+            const dataMapeada = atencionesRes.data.map(item => {
+                const cupoAsignado = cuposData.find(c => c.id === item.cupoId);
+                const codigoBox = (cupoAsignado && cupoAsignado.box) ? cupoAsignado.box.codigo : 'Box Por Asignar';
+                const prestacionInfo = servicesData.find(s => s.id === item.prestacionId);
+
+                return {
                     id: item.id,
-                    paciente: item.pacienteId || 'Paciente Desconocido',
-                    rut: 'No registrado', // El RUT podría venir del pacienteId
-                    especialidad: item.prestacionNombre || 'Consulta General',
-                    box: item.boxCodigo || 'Box Por Asignar',
-                    estado: item.estado || 'SOLICITADA' // Enum: SOLICITADA, EN_ESPERA, CERRADA
-                }));
-                setRecepcionQueue(dataMapeada);
+                    paciente: item.nombrePaciente || 'Paciente Registrado', 
+                    rut: item.rut || 'Sin RUT',                         
+                    especialidad: prestacionInfo ? prestacionInfo.nombre : 'Consulta General',
+                    box: codigoBox,
+                    estado: item.estado || 'SOLICITADA' 
+                };
+            });
+            
+            setRecepcionQueue(dataMapeada);
             } catch (error) {
                 console.warn("Backend no disponible. Cargando modo offline.");
                 setErrorBackend(true);

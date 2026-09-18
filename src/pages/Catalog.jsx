@@ -135,12 +135,14 @@ export default function Catalog() {
             const fechaCreacionJava = fechaActualLocal.toISOString().slice(0, 19);
 
             const payloadAtencion = {
-                pacienteId: nuevoCupo.rut, 
-                prestacionId: prestacionObj ? prestacionObj.id : 1,
-                cupoId: cupoGenerado.id,
-                estado: 'CONFIRMADA', 
-                fechaCreacion: fechaCreacionJava 
-            };
+            pacienteId: nuevoCupo.rut,
+            rut: nuevoCupo.rut,
+            nombrePaciente: nuevoCupo.paciente,
+            prestacionId: prestacionObj ? prestacionObj.id : 1,
+            cupoId: cupoGenerado.id,
+            estado: 'CONFIRMADA', 
+            fechaCreacion: fechaCreacionJava 
+        };
             
             await api.post('/appointments', payloadAtencion);
 

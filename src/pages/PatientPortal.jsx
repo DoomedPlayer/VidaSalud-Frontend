@@ -15,6 +15,7 @@ export default function PatientPortal() {
     const [misHoras, setMisHoras] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [errorBackend, setErrorBackend] = useState(false);
+    const [rutPaciente, setRutPaciente] = useState('');
 
     // Formulario
     const [especialidad, setEspecialidad] = useState('Medicina General');
@@ -59,14 +60,15 @@ export default function PatientPortal() {
         e.preventDefault();
         if (!fechaReserva) return;
 
-        // Payload basado en Atencion.java
         const payload = {
-            pacienteId: correoPaciente,
-            prestacionId: especialidad === 'Cardiología' ? 2 : 1, // Simulamos IDs
-            cupoId: 1, // Simulamos un cupo disponible
-            estado: 'SOLICITADA',
-            fechaCreacion: `${fechaReserva}T${horaReserva}:00`
-        };
+        pacienteId: correoPaciente, 
+        rut: rutPaciente,               
+        nombrePaciente: nombrePaciente, 
+        prestacionId: especialidad === 'Cardiología' ? 2 : 1, 
+        cupoId: 1, 
+        estado: 'SOLICITADA',
+        fechaCreacion: `${fechaReserva}T${horaReserva}:00`
+    };
 
         try {
             const res = await api.post('/appointments', payload);
@@ -116,7 +118,7 @@ export default function PatientPortal() {
                 <h3 style={{ marginTop: 0, marginBottom: '1.5rem' }}>Solicitar Nueva Hora Médica</h3>
                 <form onSubmit={solicitarHora} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', alignItems: 'end' }}>
                     <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Especialidad</label><select value={especialidad} onChange={(e) => setEspecialidad(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }}><option value="Medicina General">Medicina General</option><option value="Cardiología">Cardiología</option><option value="Pediatría">Pediatría</option><option value="Urgencia Dental">Urgencia Dental</option></select></div>
-                    {/* Se agrega min={hoy} al input date */}
+                    <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>RUT Paciente</label><input type="text" value={rutPaciente} onChange={(e) => setRutPaciente(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }} placeholder="Ej: 12345678-9" required /></div>
                     <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Fecha Preferencia</label><input type="date" min={hoy} value={fechaReserva} onChange={(e) => setFechaReserva(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }} required /></div>
                     <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Horario Preferencia</label><select value={horaReserva} onChange={(e) => setHoraReserva(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }}>{horariosFijos.map(h => <option key={h} value={h}>{h}</option>)}</select></div>
                     <div><button type="submit" style={{ backgroundColor: '#0284c7', color: 'white', border: 'none', padding: '0.8rem 1.25rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', width: '100%' }}>Reservar Hora</button></div>
