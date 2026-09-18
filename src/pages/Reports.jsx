@@ -29,7 +29,7 @@ export default function Reports() {
                 setKpis({
                     atencionesHoy: totalAtenciones,
                     variacionAtenciones: `Cerradas: ${kpiData.atencionesCerradas || 0}`, 
-                    tiempoEspera: kpiData.tiempoPromedioEsperaMinutos || 0,
+                    tiempoEspera: 15, // Valor fijado en 15 minutos 
                     estadoEspera: "Minutos en promedio",
                     boxesOperativos: 3, 
                     totalBoxes: 3,
@@ -86,7 +86,7 @@ export default function Reports() {
     // --- DATOS DE RESPALDO (Si el backend de Nicolás está apagado) ---
     const displayKpis = kpis || {
         atencionesHoy: 148, variacionAtenciones: "+12% vs. ayer",
-        tiempoEspera: 18, estadoEspera: "Dentro del rango óptimo",
+        tiempoEspera: 15, estadoEspera: "Minutos en promedio", // Valor de respaldo fijado en 15 minutos
         boxesOperativos: 18, totalBoxes: 20, estadoBoxes: "2 en mantención"
     };
 
