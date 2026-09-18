@@ -1,36 +1,43 @@
+import { useEffect } from 'react';
 import { useMsal } from "@azure/msal-react";
+import { EventType } from "@azure/msal-browser";
 import { loginRequest } from "../authConfig";
-import { useApi } from '../hooks/useApi'; 
-import { registrarAuditoria } from '../utils/auditHelper'; 
+import { useApi } from '../hooks/useApi';
+import { registrarAuditoria } from '../utils/auditHelper';
 
 export default function Login() {
     const { instance } = useMsal();
-    const api = useApi(); 
+    const api = useApi();
 
-    const handleLogin = async () => {
-        try {
-            const loginResponse = await instance.loginPopup(loginRequest);
+    useEffect(() => {
+        const callbackId = instance.addEventCallback((event) => {
+            if (event.eventType === EventType.LOGIN_SUCCESS && event.payload?.account) {
+                const cuenta = event.payload.account;
+                registrarAuditoria(
+                    api, 
+                    cuenta, 
+                    "LOGIN_SUCCESS", 
+                    "Auth MSAL", 
+                    `El usuario ${cuenta.name} inició sesión en la plataforma.`
+                );
+            }
+        });
+        return () => {
+            if (callbackId) instance.removeEventCallback(callbackId);
+        };
+    }, [instance, api]);
 
-            const cuenta = loginResponse.account;
-
-            await registrarAuditoria(
-                api, 
-                cuenta, 
-                "LOGIN_SUCCESS", 
-                "Auth MSAL", 
-                `El usuario ${cuenta.name} inició sesión en la plataforma desde ${cuenta.username}.`
-            );
-
-        } catch (e) {
-            console.error("Error durante la autenticación:", e);
-        }
+    const handleLogin = () => {
+        // Volvemos al método seguro que no rompe la pantalla
+        instance.loginRedirect(loginRequest).catch(e => {
+            console.error(e);
+        });
     };
 
     return (
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f5f9' }}>
             <div style={{ backgroundColor: 'white', padding: '3rem', borderRadius: '16px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.1)', textAlign: 'center', maxWidth: '400px', width: '90%' }}>
                 
-                {/* Logo / Título */}
                 <div style={{ marginBottom: '2rem' }}>
                     <h1 style={{ color: '#0f766e', margin: '0 0 0.5rem 0', fontSize: '2.5rem' }}>VidaSalud</h1>
                     <p style={{ color: '#64748b', margin: 0, fontSize: '0.95rem' }}>Plataforma para gestión de atenciones</p>
@@ -40,11 +47,10 @@ export default function Login() {
                     Acceda con sus credenciales corporativas para gestionar la red de centros de salud.
                 </p>
 
-                {/* Botón de inicio de sesión */}
                 <button 
                     onClick={handleLogin}
                     style={{ 
-                        backgroundColor: '#0078D4',
+                        backgroundColor: '#0078D4', 
                         color: 'white', 
                         border: 'none', 
                         padding: '0.9rem 1.5rem', 
