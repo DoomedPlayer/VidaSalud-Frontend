@@ -1,31 +1,34 @@
 import { useEffect } from 'react';
-import { useMsal } from "@azure/msal-react";
-import { EventType } from "@azure/msal-browser";
+import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { useApi } from '../hooks/useApi';
 import { registrarAuditoria } from '../utils/auditHelper';
 
 export default function AuditListener() {
-    const { instance } = useMsal();
+    const { accounts } = useMsal();
+    const isAuthenticated = useIsAuthenticated();
     const api = useApi();
 
     useEffect(() => {
-        const callbackId = instance.addEventCallback((event) => {
-            if (event.eventType === EventType.LOGIN_SUCCESS && event.payload?.account) {
-                const cuenta = event.payload.account;
+        if (isAuthenticated && accounts.length > 0) {
+            const cuenta = accounts[0];
+            const sessionKey = `audit_login_${cuenta.username}`;
+
+            if (!sessionStorage.getItem(sessionKey)) {
+                
                 registrarAuditoria(
                     api, 
                     cuenta, 
                     "LOGIN_SUCCESS", 
                     "Auth MSAL", 
-                    `El usuario ${cuenta.name} inició sesión en la plataforma desde ${cuenta.username}.`
-                );
+                    `El usuario ${cuenta.name} inició sesión en la plataforma.`
+                ).then(() => {
+                    sessionStorage.setItem(sessionKey, 'true');
+                }).catch(err => {
+                    console.error("No se pudo registrar la auditoría de login", err);
+                });
             }
-        });
+        }
+    }, [isAuthenticated, accounts, api]);
 
-        return () => {
-            if (callbackId) instance.removeEventCallback(callbackId);
-        };
-    }, [instance, api]);
-
-    return null; 
+    return null;
 }
