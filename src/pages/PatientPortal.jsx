@@ -18,57 +18,67 @@ export default function PatientPortal() {
     const [rutPaciente, setRutPaciente] = useState('');
 
     // Formulario
-    const [especialidad, setEspecialidad] = useState('Medicina General');
+    const [especialidades, setEspecialidades] = useState([]);
+    const [especialidad, setEspecialidad] = useState('');
     const [fechaReserva, setFechaReserva] = useState('');
     const [horaReserva, setHoraReserva] = useState('08:00');
     const horariosFijos = ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30'];
 
     useEffect(() => {
-        const fetchMisAtenciones = async () => {
+        const fetchDatosIniciales = async () => {
             setIsLoading(true);
             setErrorBackend(false);
             try {
-                // Le pasamos el correo como pacienteId (o podríamos filtrar en el backend)
-                const res = await api.get('/appointments');
+                const [servicesRes, atencionesRes] = await Promise.all([
+                    api.get('/catalog/services'),
+                    api.get('/appointments') 
+                ]);
                 
-                // Mapeamos lo que llega del backend (Atencion.java) a la vista
-                const dataMapeada = res.data.map(item => ({
-                    id: item.id,
-                    especialidad: item.prestacionNombre || 'Medicina General', // Asumiendo que el BFF cruza el nombre
-                    medico: 'Dr. Asignado', 
-                    sede: item.boxCentroAtencion || 'Sede San Bernardo',
-                    fecha: item.fechaCreacion ? item.fechaCreacion.split('T')[0] : 'N/A',
-                    hora: item.fechaCreacion ? item.fechaCreacion.split('T')[1].substring(0,5) : 'N/A',
-                    estado: item.estado || 'SOLICITADA' // Enum: SOLICITADA, CONFIRMADA...
-                }));
-                setMisHoras(dataMapeada);
+                const serviciosData = servicesRes.data || [];
+                setEspecialidades(serviciosData);
+
+                const misCitasBackend = (atencionesRes.data || [])
+                    .filter(c => c.pacienteId === correoPaciente)
+                    .map(c => {
+                        const prestacionInfo = serviciosData.find(s => s.id === c.prestacionId);
+                        return {
+                            id: c.id,
+                            especialidad: prestacionInfo ? prestacionInfo.nombre : 'Consulta General',
+                            medico: 'Médico Asignado', 
+                            sede: 'Sede San Bernardo', 
+                            fecha: c.fechaCreacion ? c.fechaCreacion.split('T')[0] : '',
+                            hora: c.fechaCreacion ? c.fechaCreacion.split('T')[1].substring(0,5) : '',
+                            estado: c.estado
+                        };
+                    });
+                
+                setMisHoras(misCitasBackend);
             } catch (error) {
                 console.warn("Backend no disponible. Cargando modo offline.");
                 setErrorBackend(true);
-                setMisHoras([
-                    { id: 501, especialidad: 'Medicina General', medico: 'Dr. Roberto Gómez', sede: 'Sede San Bernardo', fecha: '2026-09-15', hora: '10:30', estado: 'CONFIRMADA' }
-                ]);
             } finally {
                 setIsLoading(false);
             }
         };
 
-        fetchMisAtenciones();
+        fetchDatosIniciales();
     }, []);
 
     const solicitarHora = async (e) => {
         e.preventDefault();
-        if (!fechaReserva) return;
+        if (!fechaReserva || !especialidad || !rutPaciente) return;
+
+        const prestacionObj = especialidades.find(p => p.nombre === especialidad);
 
         const payload = {
-        pacienteId: correoPaciente, 
-        rut: rutPaciente,               
-        nombrePaciente: nombrePaciente, 
-        prestacionId: especialidad === 'Cardiología' ? 2 : 1, 
-        cupoId: 1, 
-        estado: 'SOLICITADA',
-        fechaCreacion: `${fechaReserva}T${horaReserva}:00`
-    };
+            pacienteId: correoPaciente, 
+            rut: rutPaciente,               
+            nombrePaciente: nombrePaciente, 
+            prestacionId: prestacionObj ? prestacionObj.id : 1, 
+            cupoId: 1, 
+            estado: 'SOLICITADA',
+            fechaCreacion: `${fechaReserva}T${horaReserva}:00`
+        };
 
         try {
             const res = await api.post('/appointments', payload);
@@ -117,8 +127,9 @@ export default function PatientPortal() {
             <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '2rem', marginBottom: '2rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
                 <h3 style={{ marginTop: 0, marginBottom: '1.5rem' }}>Solicitar Nueva Hora Médica</h3>
                 <form onSubmit={solicitarHora} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', alignItems: 'end' }}>
-                    <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Especialidad</label><select value={especialidad} onChange={(e) => setEspecialidad(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }}><option value="Medicina General">Medicina General</option><option value="Cardiología">Cardiología</option><option value="Pediatría">Pediatría</option><option value="Urgencia Dental">Urgencia Dental</option></select></div>
-                    <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>RUT Paciente</label><input type="text" value={rutPaciente} onChange={(e) => setRutPaciente(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }} placeholder="Ej: 12345678-9" required /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Nombre del Paciente</label><input type="text" value={nombrePaciente} readOnly style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f1f5f9', color: '#64748b', cursor: 'not-allowed' }} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>RUT Paciente</label><input type="text" value={rutPaciente} onChange={(e) => setRutPaciente(e.target.value)} placeholder="Ej: 12345678-9" required style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Especialidad</label><select required value={especialidad} onChange={(e) => setEspecialidad(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }}><option value="">Seleccione especialidad...</option>{especialidades.map(p => (<option key={p.id} value={p.nombre}>{p.nombre}</option>))}</select></div>
                     <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Fecha Preferencia</label><input type="date" min={hoy} value={fechaReserva} onChange={(e) => setFechaReserva(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }} required /></div>
                     <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Horario Preferencia</label><select value={horaReserva} onChange={(e) => setHoraReserva(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }}>{horariosFijos.map(h => <option key={h} value={h}>{h}</option>)}</select></div>
                     <div><button type="submit" style={{ backgroundColor: '#0284c7', color: 'white', border: 'none', padding: '0.8rem 1.25rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', width: '100%' }}>Reservar Hora</button></div>

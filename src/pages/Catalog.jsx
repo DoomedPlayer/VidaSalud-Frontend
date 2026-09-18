@@ -227,32 +227,49 @@ export default function Catalog() {
 
                     {/* Formulario de Nueva Cita */}
                     {modoNuevo && (
-                        <form onSubmit={handleCrearCita} style={{ backgroundColor: '#f8fafc', padding: '1.5rem', borderRadius: '12px', marginBottom: '2rem', border: '1px solid #e2e8f0', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', alignItems: 'end' }}>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>RUT Paciente</label>
-                                <input required type="text" value={nuevoCupo.rut} onChange={e => setNuevoCupo({...nuevoCupo, rut: e.target.value})} placeholder="Ej: 12345678-9" style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
+                            <div style={{ backgroundColor: 'white', padding: '2.5rem', borderRadius: '16px', width: '500px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+                                <h3 style={{ marginTop: 0, marginBottom: '0.5rem', color: '#1e293b', fontSize: '1.5rem' }}>Agendar Nueva Cita</h3>
+                                <p style={{ color: '#64748b', marginBottom: '1.5rem', marginTop: 0, fontSize: '0.95rem' }}>
+                                    Box: <strong style={{ color: '#0f766e' }}>{boxSeleccionado.codigo}</strong> | Fecha: <strong>{fechaSeleccionada}</strong>
+                                </p>
+
+                                <form onSubmit={handleCrearCita} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                                    
+                                    <div style={{ display: 'flex', gap: '1rem' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>Hora Seleccionada</label>
+                                            <input readOnly type="text" value={`${nuevoCupo.hora} hrs`} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', color: '#475569', fontWeight: '700' }} />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>RUT Paciente</label>
+                                            <input required type="text" value={nuevoCupo.rut} onChange={e => setNuevoCupo({...nuevoCupo, rut: e.target.value})} placeholder="Ej: 12345678-9" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                                        </div>
+                                    </div>
+
+                                    {/* NUEVO CAMPO: Nombre del Paciente */}
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>Nombre del Paciente</label>
+                                        <input required type="text" value={nuevoCupo.paciente} onChange={e => setNuevoCupo({...nuevoCupo, paciente: e.target.value})} placeholder="Ej: Juan Pérez" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                                    </div>
+                                    
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>Prestación</label>
+                                        <select required value={nuevoCupo.especialidad} onChange={e => setNuevoCupo({...nuevoCupo, especialidad: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: 'white' }}>
+                                            <option value="">Seleccione una especialidad...</option>
+                                            {prestaciones.map(p => (
+                                                <option key={p.id} value={p.nombre}>{p.nombre}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    
+                                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                                        <button type="button" onClick={() => setModoNuevo(false)} style={{ flex: 1, backgroundColor: 'white', color: '#64748b', border: '1px solid #cbd5e1', padding: '0.8rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>Cancelar</button>
+                                        <button type="submit" style={{ flex: 1, backgroundColor: '#0f766e', color: 'white', border: 'none', padding: '0.8rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>Guardar Cita</button>
+                                    </div>
+                                </form>
                             </div>
-                            
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>Hora Seleccionada</label>
-                                <input readOnly type="text" value={`${nuevoCupo.hora} hrs`} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#e2e8f0', color: '#475569', fontWeight: '600' }} />
-                            </div>
-                            
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>Prestación</label>
-                                <select required value={nuevoCupo.especialidad} onChange={e => setNuevoCupo({...nuevoCupo, especialidad: e.target.value})} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: 'white' }}>
-                                    <option value="">Seleccione...</option>
-                                    {prestaciones.map(p => (
-                                        <option key={p.id} value={p.nombre}>{p.nombre}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                <button type="submit" style={{ flex: 1, backgroundColor: '#0f766e', color: 'white', border: 'none', padding: '0.6rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>Guardar</button>
-                                <button type="button" onClick={() => setModoNuevo(false)} style={{ flex: 1, backgroundColor: 'white', color: '#64748b', border: '1px solid #cbd5e1', padding: '0.6rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>Cancelar</button>
-                            </div>
-                        </form>
+                        </div>
                     )}
 
                     {/* Grilla de Horarios */}
