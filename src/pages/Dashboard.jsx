@@ -65,7 +65,8 @@ export default function Dashboard() {
 
                 {tieneAcceso(['Admin', 'Recepcionista']) && (
                     <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '1.75rem', display: 'flex', flexDirection: 'column' }}>
-                        <h3 style={{ margin: '0 0 0.75rem 0', color: '#1e293b' }}>Catálogo de Prestaciones</h3>
+                        {/* Se actualizó el nombre de la tarjeta en la siguiente línea */}
+                        <h3 style={{ margin: '0 0 0.75rem 0', color: '#1e293b' }}>Gestión de box y prestaciones</h3>
                         <p style={{ margin: '0 0 1.5rem 0', color: '#64748b', flexGrow: 1 }}>Administración centralizada de servicios y valores.</p>
                         <Link to="/catalog" style={{ color: '#0f766e', fontWeight: '600', textDecoration: 'none' }}>Ver Catálogo →</Link>
                     </div>
