@@ -36,13 +36,6 @@ function TopBar() {
                     <img src={logo} alt="Logo" style={{ height: '35px', objectFit: 'contain' }} onError={(e) => e.target.style.display = 'none'} />
                     VidaSalud
                 </Link>
-                
-                {/* Botón Volver -> Aparece solo si NO estamos en el Dashboard */}
-                {location.pathname !== '/dashboard' && (
-                    <button onClick={() => navigate(-1)} style={{ backgroundColor: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1', padding: '0.4rem 0.8rem', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', transition: 'all 0.2s' }}>
-                        ← Volver atrás
-                    </button>
-                )}
             </div>
 
             {/* Botón Cerrar Sesión (Vital para MSAL) */}
