@@ -10,8 +10,9 @@ export const registrarAuditoria = async (api, cuenta, accion, modulo, detalles) 
         origenIp: 'Frontend React'  
     };
 
-    console.log("Enviando evento de auditoría...", payload);
-
-    const response = await api.post('/audit', payload);
-    return response;
+    try {
+        await api.post('/audit/event', payload);
+    } catch (error) {
+        console.error("Fallo al registrar auditoría (silenciado para no bloquear al usuario)", error);
+    }
 };
