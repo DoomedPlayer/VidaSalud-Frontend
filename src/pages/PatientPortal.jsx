@@ -9,6 +9,9 @@ export default function PatientPortal() {
     const nombrePaciente = accounts[0]?.name?.toUpperCase() || 'PACIENTE';
     const correoPaciente = accounts[0]?.username || 'correo@dominio.com';
     
+    // Nueva variable para obtener la fecha de hoy y bloquear días anteriores
+    const hoy = new Date().toISOString().split('T')[0];
+    
     const [misHoras, setMisHoras] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [errorBackend, setErrorBackend] = useState(false);
@@ -24,18 +27,20 @@ export default function PatientPortal() {
             setIsLoading(true);
             setErrorBackend(false);
             try {
-                const res = await api.post('/appointments', payload);
-
-                const nuevaCita = {
-                    id: res.data.id,
-                    especialidad: especialidad, 
+                // Le pasamos el correo como pacienteId (o podríamos filtrar en el backend)
+                const res = await api.get('/appointments');
+                
+                // Mapeamos lo que llega del backend (Atencion.java) a la vista
+                const dataMapeada = res.data.map(item => ({
+                    id: item.id,
+                    especialidad: item.prestacionNombre || 'Medicina General', // Asumiendo que el BFF cruza el nombre
                     medico: 'Dr. Asignado', 
-                    sede: 'Sede San Bernardo', 
-                    fecha: fechaReserva,
-                    hora: horaReserva,
-                    estado: res.data.estado
-                };
-                setMisHoras([nuevaCita, ...misHoras]);
+                    sede: item.boxCentroAtencion || 'Sede San Bernardo',
+                    fecha: item.fechaCreacion ? item.fechaCreacion.split('T')[0] : 'N/A',
+                    hora: item.fechaCreacion ? item.fechaCreacion.split('T')[1].substring(0,5) : 'N/A',
+                    estado: item.estado || 'SOLICITADA' // Enum: SOLICITADA, CONFIRMADA...
+                }));
+                setMisHoras(dataMapeada);
             } catch (error) {
                 console.warn("Backend no disponible. Cargando modo offline.");
                 setErrorBackend(true);
@@ -48,7 +53,7 @@ export default function PatientPortal() {
         };
 
         fetchMisAtenciones();
-    }, []);
+    }, [api]);
 
     const solicitarHora = async (e) => {
         e.preventDefault();
@@ -111,7 +116,8 @@ export default function PatientPortal() {
                 <h3 style={{ marginTop: 0, marginBottom: '1.5rem' }}>Solicitar Nueva Hora Médica</h3>
                 <form onSubmit={solicitarHora} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', alignItems: 'end' }}>
                     <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Especialidad</label><select value={especialidad} onChange={(e) => setEspecialidad(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }}><option value="Medicina General">Medicina General</option><option value="Cardiología">Cardiología</option><option value="Pediatría">Pediatría</option><option value="Urgencia Dental">Urgencia Dental</option></select></div>
-                    <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Fecha Preferencia</label><input type="date" value={fechaReserva} onChange={(e) => setFechaReserva(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }} required /></div>
+                    {/* Se agrega min={hoy} al input date */}
+                    <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Fecha Preferencia</label><input type="date" min={hoy} value={fechaReserva} onChange={(e) => setFechaReserva(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }} required /></div>
                     <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Horario Preferencia</label><select value={horaReserva} onChange={(e) => setHoraReserva(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }}>{horariosFijos.map(h => <option key={h} value={h}>{h}</option>)}</select></div>
                     <div><button type="submit" style={{ backgroundColor: '#0284c7', color: 'white', border: 'none', padding: '0.8rem 1.25rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', width: '100%' }}>Reservar Hora</button></div>
                 </form>
