@@ -1,14 +1,29 @@
 import { useMsal } from "@azure/msal-react";
 import { loginRequest } from "../authConfig";
+import { useApi } from '../hooks/useApi'; 
+import { registrarAuditoria } from '../utils/auditHelper'; 
 
 export default function Login() {
     const { instance } = useMsal();
+    const api = useApi(); 
 
-    const handleLogin = () => {
-        // Redirige a la página oficial de Microsoft para iniciar sesión
-        instance.loginRedirect(loginRequest).catch(e => {
-            console.error(e);
-        });
+    const handleLogin = async () => {
+        try {
+            const loginResponse = await instance.loginPopup(loginRequest);
+
+            const cuenta = loginResponse.account;
+
+            await registrarAuditoria(
+                api, 
+                cuenta, 
+                "LOGIN_SUCCESS", 
+                "Auth MSAL", 
+                `El usuario ${cuenta.name} inició sesión en la plataforma desde ${cuenta.username}.`
+            );
+
+        } catch (e) {
+            console.error("Error durante la autenticación:", e);
+        }
     };
 
     return (
@@ -25,11 +40,11 @@ export default function Login() {
                     Acceda con sus credenciales corporativas para gestionar la red de centros de salud.
                 </p>
 
-                {/* Botón exigido por el caso */}
+                {/* Botón de inicio de sesión */}
                 <button 
                     onClick={handleLogin}
                     style={{ 
-                        backgroundColor: '#0078D4', // Azul oficial de Microsoft
+                        backgroundColor: '#0078D4',
                         color: 'white', 
                         border: 'none', 
                         padding: '0.9rem 1.5rem', 
