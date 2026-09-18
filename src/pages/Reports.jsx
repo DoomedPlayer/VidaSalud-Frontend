@@ -26,9 +26,12 @@ export default function Reports() {
             let calculatedWaitTime = 15;
             if (appointmentsRes.data && appointmentsRes.data.length > 0) {
                 const now = new Date();
-                const activeWaiting = appointmentsRes.data.filter(c => 
-                    c.estado === 'EN_ESPERA' || c.estado === 'CONFIRMADA' || c.estado === 'SOLICITADA'
-                );
+                const activeWaiting = appointmentsRes.data.filter(c => {
+                    const isPendingState = c.estado === 'EN_ESPERA' || c.estado === 'CONFIRMADA' || c.estado === 'SOLICITADA';
+                    if (!isPendingState || !c.fechaCreacion) return false;
+                    const createdDate = new Date(c.fechaCreacion);
+                    return createdDate.toDateString() === now.toDateString();
+                });
                 if (activeWaiting.length > 0) {
                     const totalDiffMinutes = activeWaiting.reduce((acc, curr) => {
                         const created = curr.fechaCreacion ? new Date(curr.fechaCreacion) : now;
