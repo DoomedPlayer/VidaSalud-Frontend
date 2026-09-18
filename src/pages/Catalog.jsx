@@ -222,33 +222,45 @@ export default function Catalog() {
 
             {/* Modal de Agendamiento */}
             {modoNuevo && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '1rem' }}>
-                    <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '2.5rem', width: '100%', maxWidth: '450px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem' }}>
-                            <h3 style={{ margin: 0, color: '#0f766e', fontSize: '1.25rem' }}>Agendar Cita</h3>
-                            <span style={{ backgroundColor: '#e0f2fe', color: '#0284c7', padding: '0.3rem 0.8rem', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold' }}>{nuevoCupo.hora} hrs</span>
-                        </div>
-                        
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
+                    <div style={{ backgroundColor: 'white', padding: '2.5rem', borderRadius: '16px', width: '500px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+                        <h3 style={{ marginTop: 0, marginBottom: '0.5rem', color: '#1e293b', fontSize: '1.5rem' }}>Agendar Nueva Cita</h3>
+                        <p style={{ color: '#64748b', marginBottom: '1.5rem', marginTop: 0, fontSize: '0.95rem' }}>
+                            Box: <strong style={{ color: '#0f766e' }}>{boxSeleccionado?.codigo}</strong> | Fecha: <strong>{fechaSeleccionada}</strong>
+                        </p>
+
                         <form onSubmit={handleCrearCita} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.4rem', color: '#334155' }}>RUT del Paciente</label>
-                                <input type="text" value={nuevoCupo.rut} onChange={e => setNuevoCupo({...nuevoCupo, rut: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} placeholder="Ej: 12345678-9" required autoFocus />
+                            
+                            <div style={{ display: 'flex', gap: '1rem' }}>
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>Hora Seleccionada</label>
+                                    <input readOnly type="text" value={`${nuevoCupo.hora} hrs`} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', color: '#475569', fontWeight: '700', boxSizing: 'border-box' }} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>RUT Paciente</label>
+                                    <input required type="text" value={nuevoCupo.rut} onChange={e => setNuevoCupo({...nuevoCupo, rut: e.target.value})} placeholder="Ej: 12345678-9" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} autoFocus />
+                                </div>
                             </div>
+
+                            {/* NUEVO CAMPO: Nombre del Paciente */}
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.4rem', color: '#334155' }}>Nombre Completo</label>
-                                <input type="text" value={nuevoCupo.paciente} onChange={e => setNuevoCupo({...nuevoCupo, paciente: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} placeholder="Nombre del paciente" required />
+                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>Nombre del Paciente</label>
+                                <input required type="text" value={nuevoCupo.paciente} onChange={e => setNuevoCupo({...nuevoCupo, paciente: e.target.value})} placeholder="Ej: Juan Pérez" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
                             </div>
+                            
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.4rem', color: '#334155' }}>Prestación / Especialidad</label>
-                                <select value={nuevoCupo.especialidad} onChange={e => setNuevoCupo({...nuevoCupo, especialidad: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box', backgroundColor: 'white' }} required>
-                                    <option value="" disabled>Seleccione una prestación...</option>
-                                    {prestaciones.map(p => <option key={p.id} value={p.nombre}>{p.nombre}</option>)}
+                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>Prestación</label>
+                                <select required value={nuevoCupo.especialidad} onChange={e => setNuevoCupo({...nuevoCupo, especialidad: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: 'white', boxSizing: 'border-box' }}>
+                                    <option value="">Seleccione una especialidad...</option>
+                                    {prestaciones.map(p => (
+                                        <option key={p.id} value={p.nombre}>{p.nombre}</option>
+                                    ))}
                                 </select>
                             </div>
                             
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
-                                <button type="button" onClick={() => setModoNuevo(false)} style={{ backgroundColor: '#f1f5f9', color: '#475569', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' }}>Cancelar</button>
-                                <button type="submit" style={{ backgroundColor: '#0f766e', color: 'white', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' }}>Confirmar Cita</button>
+                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                                <button type="button" onClick={() => setModoNuevo(false)} style={{ flex: 1, backgroundColor: 'white', color: '#64748b', border: '1px solid #cbd5e1', padding: '0.8rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>Cancelar</button>
+                                <button type="submit" style={{ flex: 1, backgroundColor: '#0f766e', color: 'white', border: 'none', padding: '0.8rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>Guardar Cita</button>
                             </div>
                         </form>
                     </div>
