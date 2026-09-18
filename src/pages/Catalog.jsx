@@ -19,7 +19,7 @@ export default function Catalog() {
     const [modoNuevo, setModoNuevo] = useState(false);
     const [nuevoCupo, setNuevoCupo] = useState({ rut: '', paciente: '', hora: '08:30', especialidad: '' });
 
-    // 4. Estados de UI - Prestaciones (Restaurados)
+    // 4. Estados de UI - Prestaciones
     const [nuevaPrestacion, setNuevaPrestacion] = useState({ nombre: '', precio: '', descripcion: '' });
     const [precioEditando, setPrecioEditando] = useState({ id: null, nuevoPrecio: '' });
 
@@ -41,7 +41,6 @@ export default function Catalog() {
         return fechaOriginal; 
     };
 
-    // --- CARGA INICIAL (Mantiene tu lógica nueva) ---
     useEffect(() => {
         const fetchCatalogData = async () => {
             setIsLoading(true);
@@ -96,7 +95,6 @@ export default function Catalog() {
         fetchCatalogData();
     }, []); 
 
-    // --- FUNCIONES AGENDA ---
     const obtenerCitaEnSlot = (horaSlot) => {
         return cupos.find(c => {
             if (c.boxId !== boxSeleccionado?.id) return false;
@@ -178,7 +176,6 @@ export default function Catalog() {
         }
     };
 
-    // --- FUNCIONES PRESTACIONES (Restauradas) ---
     const handleCrearPrestacion = async (e) => {
         e.preventDefault();
         if (!nuevaPrestacion.nombre || !nuevaPrestacion.precio) return;
@@ -223,7 +220,42 @@ export default function Catalog() {
                 </div>
             )}
 
-            {/* Encabezado Principal Completado */}
+            {/* Modal de Agendamiento */}
+            {modoNuevo && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '1rem' }}>
+                    <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '2.5rem', width: '100%', maxWidth: '450px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem' }}>
+                            <h3 style={{ margin: 0, color: '#0f766e', fontSize: '1.25rem' }}>Agendar Cita</h3>
+                            <span style={{ backgroundColor: '#e0f2fe', color: '#0284c7', padding: '0.3rem 0.8rem', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold' }}>{nuevoCupo.hora} hrs</span>
+                        </div>
+                        
+                        <form onSubmit={handleCrearCita} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.4rem', color: '#334155' }}>RUT del Paciente</label>
+                                <input type="text" value={nuevoCupo.rut} onChange={e => setNuevoCupo({...nuevoCupo, rut: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} placeholder="Ej: 12345678-9" required autoFocus />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.4rem', color: '#334155' }}>Nombre Completo</label>
+                                <input type="text" value={nuevoCupo.paciente} onChange={e => setNuevoCupo({...nuevoCupo, paciente: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} placeholder="Nombre del paciente" required />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.4rem', color: '#334155' }}>Prestación / Especialidad</label>
+                                <select value={nuevoCupo.especialidad} onChange={e => setNuevoCupo({...nuevoCupo, especialidad: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box', backgroundColor: 'white' }} required>
+                                    <option value="" disabled>Seleccione una prestación...</option>
+                                    {prestaciones.map(p => <option key={p.id} value={p.nombre}>{p.nombre}</option>)}
+                                </select>
+                            </div>
+                            
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
+                                <button type="button" onClick={() => setModoNuevo(false)} style={{ backgroundColor: '#f1f5f9', color: '#475569', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' }}>Cancelar</button>
+                                <button type="submit" style={{ backgroundColor: '#0f766e', color: 'white', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' }}>Confirmar Cita</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Encabezado Principal */}
             <div style={{ background: 'linear-gradient(135deg, #0f766e 0%, #115e59 100%)', borderRadius: '16px', padding: '2.5rem', color: 'white', marginBottom: '2rem' }}>
                 <span style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.3rem 0.8rem', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold' }}>
                     Gestión de Box y Prestaciones
@@ -231,7 +263,7 @@ export default function Catalog() {
                 <h1 style={{ margin: '1rem 0 0 0', fontSize: '2rem' }}>Administración Centralizada</h1>
             </div>
 
-            {/* Pestañas de Navegación Restauradas */}
+            {/* Pestañas de Navegación */}
             <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '2px solid #e2e8f0', paddingBottom: '1rem' }}>
                 <button onClick={() => setVistaActiva('AGENDA')} style={{ backgroundColor: vistaActiva === 'AGENDA' ? '#0f766e' : 'transparent', color: vistaActiva === 'AGENDA' ? 'white' : '#475569', border: 'none', padding: '0.8rem 1.5rem', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>📅 Agenda de Boxes</button>
                 <button onClick={() => setVistaActiva('PRESTACIONES')} style={{ backgroundColor: vistaActiva === 'PRESTACIONES' ? '#0f766e' : 'transparent', color: vistaActiva === 'PRESTACIONES' ? 'white' : '#475569', border: 'none', padding: '0.8rem 1.5rem', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>⚕️ Catálogo de Prestaciones</button>
@@ -266,19 +298,6 @@ export default function Catalog() {
                                 />
                             </div>
                         </div>
-
-                        {modoNuevo && (
-                            <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem' }}>
-                                <h4 style={{ margin: '0 0 1rem 0', color: '#0f766e' }}>Agendar Nueva Cita Local</h4>
-                                <form onSubmit={handleCrearCita} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                                    <div style={{ flex: '1 1 120px' }}><label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '0.3rem' }}>RUT</label><input type="text" value={nuevoCupo.rut} onChange={e => setNuevoCupo({...nuevoCupo, rut: e.target.value})} style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1' }} required /></div>
-                                    <div style={{ flex: '2 1 180px' }}><label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '0.3rem' }}>Paciente</label><input type="text" value={nuevoCupo.paciente} onChange={e => setNuevoCupo({...nuevoCupo, paciente: e.target.value})} style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1' }} required /></div>
-                                    <div style={{ flex: '2 1 150px' }}><label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '0.3rem' }}>Prestación</label><select value={nuevoCupo.especialidad} onChange={e => setNuevoCupo({...nuevoCupo, especialidad: e.target.value})} style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}><option value="" disabled>Seleccione una prestación...</option>{prestaciones.map(p => <option key={p.id} value={p.nombre}>{p.nombre}</option>)}</select></div>
-                                    <div style={{ flex: '1 1 100px' }}><label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '0.3rem' }}>Hora</label><select value={nuevoCupo.hora} onChange={e => setNuevoCupo({...nuevoCupo, hora: e.target.value})} style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}>{horariosFijos.map(h => <option key={h} value={h} disabled={isHoraOcupada(h)}>{h} {isHoraOcupada(h) ? '(Ocupado)' : ''}</option>)}</select></div>
-                                    <div style={{ display: 'flex', gap: '0.5rem' }}><button type="submit" style={{ backgroundColor: '#0f766e', color: 'white', border: 'none', padding: '0.6rem 1.2rem', borderRadius: '6px', cursor: 'pointer' }}>Guardar</button><button type="button" onClick={() => setModoNuevo(false)} style={{ backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '0.6rem 1.2rem', borderRadius: '6px', cursor: 'pointer' }}>Cancelar</button></div>
-                                </form>
-                            </div>
-                        )}
 
                         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.95rem' }}>
                             <thead>
@@ -333,9 +352,9 @@ export default function Catalog() {
                     <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem' }}>
                         <h4 style={{ margin: '0 0 1rem 0', color: '#0f766e' }}>Registrar Nueva Prestación</h4>
                         <form onSubmit={handleCrearPrestacion} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', alignItems: 'end' }}>
-                            <div><label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '0.4rem' }}>Nombre</label><input type="text" value={nuevaPrestacion.nombre} onChange={e => setNuevaPrestacion({...nuevaPrestacion, nombre: e.target.value})} style={{ width: '100%', padding: '0.7rem', borderRadius: '8px', border: '1px solid #cbd5e1' }} required /></div>
-                            <div><label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '0.4rem' }}>Precio Base ($)</label><input type="number" value={nuevaPrestacion.precio} onChange={e => setNuevaPrestacion({...nuevaPrestacion, precio: e.target.value})} style={{ width: '100%', padding: '0.7rem', borderRadius: '8px', border: '1px solid #cbd5e1' }} required /></div>
-                            <div style={{ gridColumn: '1 / -1' }}><label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '0.4rem' }}>Descripción</label><input type="text" value={nuevaPrestacion.descripcion} onChange={e => setNuevaPrestacion({...nuevaPrestacion, descripcion: e.target.value})} style={{ width: '100%', padding: '0.7rem', borderRadius: '8px', border: '1px solid #cbd5e1' }} /></div>
+                            <div><label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '0.4rem' }}>Nombre</label><input type="text" value={nuevaPrestacion.nombre} onChange={e => setNuevaPrestacion({...nuevaPrestacion, nombre: e.target.value})} style={{ width: '100%', padding: '0.7rem', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} required /></div>
+                            <div><label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '0.4rem' }}>Precio Base ($)</label><input type="number" value={nuevaPrestacion.precio} onChange={e => setNuevaPrestacion({...nuevaPrestacion, precio: e.target.value})} style={{ width: '100%', padding: '0.7rem', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} required /></div>
+                            <div style={{ gridColumn: '1 / -1' }}><label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '0.4rem' }}>Descripción</label><input type="text" value={nuevaPrestacion.descripcion} onChange={e => setNuevaPrestacion({...nuevaPrestacion, descripcion: e.target.value})} style={{ width: '100%', padding: '0.7rem', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} /></div>
                             <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end' }}><button type="submit" style={{ backgroundColor: '#0f766e', color: 'white', border: 'none', padding: '0.75rem 2rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>Agregar</button></div>
                         </form>
                     </div>
