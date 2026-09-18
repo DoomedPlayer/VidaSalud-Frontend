@@ -1,11 +1,34 @@
+import { useEffect } from 'react';
 import { useMsal } from "@azure/msal-react";
+import { EventType } from "@azure/msal-browser";
 import { loginRequest } from "../authConfig";
+import { useApi } from '../hooks/useApi';
+import { registrarAuditoria } from '../utils/auditHelper';
 
 export default function Login() {
     const { instance } = useMsal();
+    const api = useApi();
+
+    useEffect(() => {
+        const callbackId = instance.addEventCallback((event) => {
+            if (event.eventType === EventType.LOGIN_SUCCESS && event.payload?.account) {
+                const cuenta = event.payload.account;
+                registrarAuditoria(
+                    api, 
+                    cuenta, 
+                    "LOGIN_SUCCESS", 
+                    "Auth MSAL", 
+                    `El usuario ${cuenta.name} inició sesión en la plataforma.`
+                );
+            }
+        });
+        return () => {
+            if (callbackId) instance.removeEventCallback(callbackId);
+        };
+    }, [instance, api]);
 
     const handleLogin = () => {
-        // Redirige a la página oficial de Microsoft para iniciar sesión
+        // Volvemos al método seguro que no rompe la pantalla
         instance.loginRedirect(loginRequest).catch(e => {
             console.error(e);
         });
@@ -15,7 +38,6 @@ export default function Login() {
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f5f9' }}>
             <div style={{ backgroundColor: 'white', padding: '3rem', borderRadius: '16px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.1)', textAlign: 'center', maxWidth: '400px', width: '90%' }}>
                 
-                {/* Logo / Título */}
                 <div style={{ marginBottom: '2rem' }}>
                     <h1 style={{ color: '#0f766e', margin: '0 0 0.5rem 0', fontSize: '2.5rem' }}>VidaSalud</h1>
                     <p style={{ color: '#64748b', margin: 0, fontSize: '0.95rem' }}>Plataforma para gestión de atenciones</p>
@@ -25,11 +47,10 @@ export default function Login() {
                     Acceda con sus credenciales corporativas para gestionar la red de centros de salud.
                 </p>
 
-                {/* Botón exigido por el caso */}
                 <button 
                     onClick={handleLogin}
                     style={{ 
-                        backgroundColor: '#0078D4', // Azul oficial de Microsoft
+                        backgroundColor: '#0078D4', 
                         color: 'white', 
                         border: 'none', 
                         padding: '0.9rem 1.5rem', 
