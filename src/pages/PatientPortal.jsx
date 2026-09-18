@@ -53,7 +53,7 @@ export default function PatientPortal() {
         };
 
         fetchMisAtenciones();
-    }, [api]);
+    }, []);
 
     const solicitarHora = async (e) => {
         e.preventDefault();
