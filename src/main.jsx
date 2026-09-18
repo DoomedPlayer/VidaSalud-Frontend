@@ -7,6 +7,7 @@ import './index.css'
 import { PublicClientApplication } from "@azure/msal-browser";
 import { MsalProvider } from "@azure/msal-react";
 import { msalConfig } from "./authConfig";
+import AuditListener from './components/AuditListener';
 
 const msalInstance = new PublicClientApplication(msalConfig);
 
