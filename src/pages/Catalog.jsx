@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useApi } from '../hooks/useApi';
+import { useMsal } from "@azure/msal-react";
+import { registrarAuditoria } from '../utils/auditHelper';
 
 export default function Catalog() {
+    const { accounts } = useMsal();
+    const cuenta = accounts.length > 0 ? accounts[0] : null;
     const api = useApi();
 
     // 1. Estados compartidos
@@ -187,7 +191,14 @@ export default function Catalog() {
         };
 
         try {
-            const res = await api.post('/catalog/services', payload);
+            await api.post('/catalog/services', nuevaPrestacion);
+            await registrarAuditoria(
+                api, 
+                cuenta, 
+                "CATALOG_CREATE", 
+                "Catálogo", 
+                `Se creó la prestación: ${nuevaPrestacion.nombre} con precio $${nuevaPrestacion.precio}`
+            );
             setPrestaciones([...prestaciones, res.data]);
         } catch (err) {
             console.warn("Guardando prestación en memoria (Modo Offline)");
@@ -199,16 +210,26 @@ export default function Catalog() {
     const iniciarEdicionPrecio = (prestacion) => setPrecioEditando({ id: prestacion.id, nuevoPrecio: prestacion.precio });
     
     const guardarEdicionPrecio = async (id) => {
-        const payload = { precio: parseFloat(precioEditando.nuevoPrecio) };
-        try {
-            await api.put(`/catalog/services/${id}`, payload);
-            setPrestaciones(prestaciones.map(p => p.id === id ? { ...p, precio: payload.precio } : p));
-        } catch (err) {
-            console.warn("Actualizando precio en memoria (Modo Offline)");
-            setPrestaciones(prestaciones.map(p => p.id === id ? { ...p, precio: payload.precio } : p));
-        }
-        setPrecioEditando({ id: null, nuevoPrecio: '' });
-    };
+    const payload = { precio: parseFloat(precioEditando.nuevoPrecio) };
+    try {
+        await api.put(`/catalog/services/${id}`, payload);
+        setPrestaciones(prestaciones.map(p => p.id === id ? { ...p, precio: payload.precio } : p));
+        const prestacionEncontrada = prestaciones.find(p => p.id === id);
+        const nombrePrestacion = prestacionEncontrada ? prestacionEncontrada.nombre : `ID ${id}`;
+
+        await registrarAuditoria(
+            api, 
+            cuenta, 
+            "CATALOG_UPDATE", 
+            "Catálogo", 
+            `Se modificó la prestación: ${nombrePrestacion}.`
+        );
+    } catch (err) {
+        console.warn("Actualizando precio en memoria (Modo Offline)");
+        setPrestaciones(prestaciones.map(p => p.id === id ? { ...p, precio: payload.precio } : p));
+    }
+    setPrecioEditando({ id: null, nuevoPrecio: '' });
+};
 
     if (isLoading) return <div style={{ padding: '2rem' }}>Cargando catálogo...</div>;
 
