@@ -191,16 +191,23 @@ export default function Catalog() {
         };
 
         try {
-            await api.post('/catalog/services', nuevaPrestacion);
-            await registrarAuditoria(
-                api, 
-                cuenta, 
-                "CATALOG_CREATE", 
-                "Catálogo", 
-                `Se creó la prestación: ${nuevaPrestacion.nombre} con precio $${nuevaPrestacion.precio}`
-            );
+            const res = await api.post('/catalog/services', payload);
+
+            if (cuenta) {
+                await registrarAuditoria(
+                    api, 
+                    cuenta, 
+                    "CATALOG_CREATE", 
+                    "Catálogo", 
+                    `Se creó la prestación: ${nuevaPrestacion.nombre} con precio $${nuevaPrestacion.precio}`
+                );
+            } else {
+                console.warn("⚠️ Auditoría omitida: No hay cuenta MSAL activa.");
+            }
+
             setPrestaciones([...prestaciones, res.data]);
         } catch (err) {
+            console.error("Error al crear prestación:", err);
             console.warn("Guardando prestación en memoria (Modo Offline)");
             setPrestaciones([...prestaciones, { ...payload, id: Date.now() }]);
         }
@@ -217,18 +224,23 @@ export default function Catalog() {
         const prestacionEncontrada = prestaciones.find(p => p.id === id);
         const nombrePrestacion = prestacionEncontrada ? prestacionEncontrada.nombre : `ID ${id}`;
 
-        await registrarAuditoria(
-            api, 
-            cuenta, 
-            "CATALOG_UPDATE", 
-            "Catálogo", 
-            `Se modificó la prestación: ${nombrePrestacion}.`
-        );
-    } catch (err) {
-        console.warn("Actualizando precio en memoria (Modo Offline)");
-        setPrestaciones(prestaciones.map(p => p.id === id ? { ...p, precio: payload.precio } : p));
-    }
-    setPrecioEditando({ id: null, nuevoPrecio: '' });
+        if (cuenta) {
+                await registrarAuditoria(
+                    api, 
+                    cuenta, 
+                    "CATALOG_UPDATE", 
+                    "Catálogo", 
+                    `Se modificó la prestación: ${nombrePrestacion} a nuevo precio $${payload.precio}.`
+                );
+            } else {
+                console.warn("⚠️ Auditoría de precio omitida: No hay cuenta MSAL activa.");
+            }
+        } catch (err) {
+            console.error("Error al actualizar precio:", err);
+            console.warn("Actualizando precio en memoria (Modo Offline)");
+            setPrestaciones(prestaciones.map(p => p.id === id ? { ...p, precio: payload.precio } : p));
+        }
+        setPrecioEditando({ id: null, nuevoPrecio: '' });
 };
 
     if (isLoading) return <div style={{ padding: '2rem' }}>Cargando catálogo...</div>;
