@@ -15,6 +15,7 @@ msalInstance.initialize().then(() => {
   ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
       <MsalProvider instance={msalInstance}>
+        <AuditListener />
         <App />
       </MsalProvider>
     </React.StrictMode>,
