@@ -21,7 +21,18 @@ export default function Catalog() {
     const [modalConfirmar, setModalConfirmar] = useState({ isOpen: false, cupoId: null });
     const [modoNuevo, setModoNuevo] = useState(false);
     const [nuevoCupo, setNuevoCupo] = useState({ rut: '', paciente: '', hora: '08:00', especialidad: '' });
-    const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date().toISOString().split('T')[0]);
+
+    const fechaActualISO = new Date().toISOString().split('T')[0];
+    const [fechaSeleccionada, setFechaSeleccionada] = useState(fechaActualISO);
+
+    const normalizarFecha = (fechaOriginal) => {
+        if (!fechaOriginal) return '';
+        if (Array.isArray(fechaOriginal)) {
+            const [y, m, d, h, min] = fechaOriginal;
+            return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}T${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}:00`;
+        }
+        return fechaOriginal; 
+    };
 
     const horariosFijos = [
         '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', 
@@ -59,31 +70,31 @@ export default function Catalog() {
                 return {
                     id: cupo.id,
                     boxId: cupo.box ? cupo.box.id : null,
-                    fechaHoraInicio: cupo.fechaHoraInicio,
+                    fechaHoraInicio: normalizarFecha(cupo.fechaHoraInicio), 
                     rut: atencionVinculada ? atencionVinculada.pacienteId : '',
                     paciente: atencionVinculada ? atencionVinculada.pacienteId : '', 
                     especialidad: nombreEspecialidad
                 };
             });
             
-            setPrestaciones(prestacionesData);
-            setBoxesConfig(boxesData);
-            setCupos(cuposEnriquecidos);
-            
-            if (boxesData.length > 0) {
-                setBoxSeleccionado(boxesData[0]);
+                setPrestaciones(prestacionesData);
+                setBoxesConfig(boxesData);
+                setCupos(cuposEnriquecidos);
+                
+                if (boxesData.length > 0) {
+                    setBoxSeleccionado(boxesData[0]);
+                }
+            } catch (err) {
+                console.error("Error conectando al BFF.", err);
+                setErrorBackend(true);
+                cargarDatosDePrueba(); 
+            } finally {
+                setIsLoading(false);
             }
-        } catch (err) {
-            console.error("Error conectando al BFF.", err);
-            setErrorBackend(true);
-            cargarDatosDePrueba(); 
-        } finally {
-            setIsLoading(false);
-        }
-    };
+        };
 
-    fetchCatalogData();
-}, []);
+        fetchCatalogData();
+    }, []);
 
     const cargarDatosDePrueba = () => {
         const mockBoxes = [
@@ -101,8 +112,6 @@ export default function Catalog() {
             { id: 1, boxId: 1, fechaHoraInicio: '09:00', rut: '19.283.746-K', paciente: 'Francisca Valenzuela', especialidad: 'Medicina General' }
         ]);
     };
-
-    // --- 2. ACCIONES CON EL BACKEND (Con Fallback Offline) ---
 
     const handleCrearPrestacion = async (e) => {
         e.preventDefault();
@@ -139,29 +148,25 @@ export default function Catalog() {
     };
 
     const handleCrearCita = async (e) => {
-    e.preventDefault();
-    if (!nuevoCupo.especialidad) {
-        alert("Por favor, seleccione una prestación antes de guardar.");
-        return;
-    }
+        e.preventDefault();
+        if (!nuevoCupo.especialidad) {
+            alert("Por favor, seleccione una prestación antes de guardar.");
+            return;
+        }
 
-    // 1. Formatear horas para que coincidan con LocalDateTime de Java
-    // (Usamos la fecha de hoy para estandarizar el laboratorio)
-    const hoy = new Date().toISOString().split('T')[0]; 
-    const fechaHoraInicio = `${hoy}T${nuevoCupo.hora}:00`;
-    
-    // Calcular 30 minutos de duración para la hora de fin
-    const fechaFinObj = new Date(`${hoy}T${nuevoCupo.hora}:00`);
-    fechaFinObj.setMinutes(fechaFinObj.getMinutes() + 30);
-    const horaFinFormat = String(fechaFinObj.getHours()).padStart(2, '0') + ':' + String(fechaFinObj.getMinutes()).padStart(2, '0');
-    const fechaHoraFin = `${hoy}T${horaFinFormat}:00`;
+        const fechaBase = fechaSeleccionada; 
+        const fechaHoraInicio = `${fechaBase}T${nuevoCupo.hora}:00`;
 
-    // 2. Armar el Payload EXACTO para Cupo.java
-    const payloadCupo = {
-            box: { id: boxSeleccionado.id }, // Se pasa como objeto por la relación ManyToOne
+        const fechaFinObj = new Date(`${fechaBase}T${nuevoCupo.hora}:00`);
+        fechaFinObj.setMinutes(fechaFinObj.getMinutes() + 30);
+        const horaFinFormat = String(fechaFinObj.getHours()).padStart(2, '0') + ':' + String(fechaFinObj.getMinutes()).padStart(2, '0');
+        const fechaHoraFin = `${fechaBase}T${horaFinFormat}:00`;
+
+        const payloadCupo = {
+            box: { id: boxSeleccionado.id },
             fechaHoraInicio: fechaHoraInicio,
             fechaHoraFin: fechaHoraFin,
-            disponible: false // Queda ocupado inmediatamente
+            disponible: false 
         };
 
         try {
@@ -169,26 +174,28 @@ export default function Catalog() {
             const cupoGenerado = resCupo.data;
 
             const prestacionObj = prestaciones.find(p => p.nombre === nuevoCupo.especialidad);
+
             const fechaActualLocal = new Date();
             fechaActualLocal.setMinutes(fechaActualLocal.getMinutes() - fechaActualLocal.getTimezoneOffset());
             const fechaCreacionJava = fechaActualLocal.toISOString().slice(0, 19);
 
             const payloadAtencion = {
-                pacienteId: nuevoCupo.rut, // Usamos el RUT como ID del paciente
+                pacienteId: nuevoCupo.rut, 
                 prestacionId: prestacionObj ? prestacionObj.id : 1,
                 cupoId: cupoGenerado.id,
-                estado: 'CONFIRMADA',
-                fechaCreacion: fechaCreacionJava
+                estado: 'CONFIRMADA', 
+                fechaCreacion: fechaCreacionJava 
             };
             
             await api.post('/appointments', payloadAtencion);
 
+
             const citaVisual = {
                 id: cupoGenerado.id,
                 boxId: boxSeleccionado.id,
-                fechaHoraInicio: nuevoCupo.hora,
+                fechaHoraInicio: fechaHoraInicio, 
                 rut: nuevoCupo.rut,
-                paciente: nuevoCupo.paciente,
+                paciente: nuevoCupo.paciente, 
                 especialidad: nuevoCupo.especialidad
             };
 
@@ -198,7 +205,7 @@ export default function Catalog() {
 
         } catch (err) {
             console.error("Detalle del error:", err);
-            alert("Ocurrió un error al guardar en la base de datos. Revisa la consola.");
+            alert("Ocurrió un error al guardar en la base de datos.");
         }
     };
     const obtenerCitaEnSlot = (horaSlot) => {
@@ -257,6 +264,7 @@ export default function Catalog() {
                                 <input 
                                     type="date" 
                                     value={fechaSeleccionada} 
+                                    min={fechaActualISO}
                                     onChange={(e) => setFechaSeleccionada(e.target.value)}
                                     style={{ padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}
                                 />
@@ -306,9 +314,13 @@ export default function Catalog() {
                                                     <td style={{ padding: '1rem', color: '#94a3b8', fontStyle: 'italic' }}>---</td>
                                                     <td style={{ padding: '1rem', color: '#94a3b8', fontStyle: 'italic' }}>---</td>
                                                     <td style={{ padding: '1rem', textAlign: 'right' }}>
-                                                        <button onClick={() => abrirAgendamiento(hora)} style={{ backgroundColor: '#0f766e', color: 'white', border: 'none', padding: '0.4rem 1rem', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '0.8rem' }}>
-                                                            + Agendar
-                                                        </button>
+                                                        {fechaSeleccionada < fechaActualISO ? (
+                                                            <span style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: '600' }}>No disponible</span>
+                                                        ) : (
+                                                            <button onClick={() => abrirAgendamiento(hora)} style={{ backgroundColor: '#0f766e', color: 'white', border: 'none', padding: '0.4rem 1rem', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '0.8rem' }}>
+                                                                + Agendar
+                                                            </button>
+                                                        )}
                                                     </td>
                                                 </>
                                             )}
