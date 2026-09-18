@@ -6,7 +6,7 @@ export const registrarAuditoria = async (api, cuenta, accion, modulo, detalles) 
         accion: accion,            
         entidadId: modulo,
         detalles: detalles,
-        fechaHora: new Date().toISOString(),
+        fechaHora: new Date().toISOString().substring(0, 19),
         origenIp: 'Frontend React'  
     };
 
