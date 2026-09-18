@@ -20,7 +20,7 @@ export default function ReceptionistPortal() {
             setIsLoading(true);
             setErrorBackend(false);
             try {
-            const [atencionesRes, cuposRes, servicesRes] = await Promise.all([
+            const [atencionesRes, cuposRes, servicesRes, boxesRes] = await Promise.all([
                 api.get('/appointments'),
                 api.get('/catalog/cupos'),
                 api.get('/catalog/services'),
