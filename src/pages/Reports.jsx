@@ -16,11 +16,28 @@ export default function Reports() {
         setIsRefreshing(true);
         setErrorBackend(false);
         try {
-            const [kpisResponse, servicesResponse, catalogServicesRes] = await Promise.all([
+            const [kpisResponse, servicesResponse, catalogServicesRes, appointmentsRes] = await Promise.all([
                 api.get('/report/kpis/today'),
                 api.get('/report/top-services'),
-                api.get('/catalog/services')
+                api.get('/catalog/services'),
+                api.get('/appointments')
             ]);
+
+            let calculatedWaitTime = 15;
+            if (appointmentsRes.data && appointmentsRes.data.length > 0) {
+                const now = new Date();
+                const activeWaiting = appointmentsRes.data.filter(c => 
+                    c.estado === 'EN_ESPERA' || c.estado === 'CONFIRMADA' || c.estado === 'SOLICITADA'
+                );
+                if (activeWaiting.length > 0) {
+                    const totalDiffMinutes = activeWaiting.reduce((acc, curr) => {
+                        const created = curr.fechaCreacion ? new Date(curr.fechaCreacion) : now;
+                        const diffMin = Math.max(0, (now - created) / 60000);
+                        return acc + diffMin;
+                    }, 0);
+                    calculatedWaitTime = Math.round(totalDiffMinutes / activeWaiting.length);
+                }
+            }
 
             if (kpisResponse.data) {
                 const kpiData = kpisResponse.data;
@@ -29,10 +46,10 @@ export default function Reports() {
                 setKpis({
                     atencionesHoy: totalAtenciones,
                     variacionAtenciones: `Cerradas: ${kpiData.atencionesCerradas || 0}`, 
-                    tiempoEspera: 15, // Valor fijado en 15 minutos 
+                    tiempoEspera: kpiData.tiempoEspera ?? calculatedWaitTime, // Usa dato de backend o cálculo dinámico
                     estadoEspera: "Minutos en promedio",
-                    boxesOperativos: 3, 
-                    totalBoxes: 3,
+                    boxesOperativos: kpiData.boxesOperativos || 3, 
+                    totalBoxes: kpiData.totalBoxes || 3,
                     estadoBoxes: "Disponibles"
                 });
             }
