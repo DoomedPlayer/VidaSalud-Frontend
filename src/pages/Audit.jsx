@@ -60,19 +60,23 @@ export default function Audit() {
 
     // --- DATOS DE RESPALDO (Modo Offline) ---
     const mockEventos = [
-        { id: 1, fecha: '2026-09-15', hora: '08:32:10', usuario: 'do.urrutia@duocuc.cl', accion: 'LOGIN_SUCCESS', modulo: 'Auth MSAL', ip: '190.160.22.14' },
-        { id: 2, fecha: '2026-09-15', hora: '09:15:00', usuario: 'paciente.nuevo@mail.com', accion: 'APPOINTMENT_REQUESTED', modulo: 'Portal Paciente', ip: '200.111.45.2' },
-        { id: 3, fecha: '2026-09-15', hora: '10:05:33', usuario: 'benjamin.recepcion@duocuc.cl', accion: 'APPOINTMENT_CONFIRMED', modulo: 'Recepción', ip: '10.0.1.50' }
+        { id: 1, fecha: '2026-09-15', hora: '08:32:10', usuario: 'do.urrutia@duocuc.cl', accion: 'LOGIN_SUCCESS', modulo: 'Auth MSAL', ip: '190.160.22.14', detalles: 'Simulación inicio de sesión' },
+        { id: 2, fecha: '2026-09-15', hora: '09:15:00', usuario: 'paciente.nuevo@mail.com', accion: 'APPOINTMENT_REQUESTED', modulo: 'Portal Paciente', ip: '200.111.45.2', detalles: 'Simulación solicitud de cita' },
+        { id: 3, fecha: '2026-09-15', hora: '10:05:33', usuario: 'benjamin.recepcion@duocuc.cl', accion: 'APPOINTMENT_CONFIRMED', modulo: 'Recepción', ip: '10.0.1.50', detalles: 'Simulación confirmación de cita' }
     ];
 
-    const eventosAMostrar = errorBackend ? mockEventos : eventos;
+    const eventosAMostrar = (errorBackend ? mockEventos : eventos).slice().sort((a, b) => {
+        const timeA = `${a.fecha || '0000-01-01'}T${a.hora || '00:00:00'}`;
+        const timeB = `${b.fecha || '0000-01-01'}T${b.hora || '00:00:00'}`;
+        return timeB.localeCompare(timeA);
+    });
 
     // Lógica de filtrado
     const eventosFiltrados = eventosAMostrar.filter(ev => {
         return ev.usuario.toLowerCase().includes(filtroUsuario.toLowerCase()) && 
                (filtroFecha === '' || ev.fecha === filtroFecha) && 
                (filtroTipo === '' || ev.accion.toLowerCase().includes(filtroTipo.toLowerCase()));
-    });
+    })
 
     return (
         <div>
