@@ -4,101 +4,113 @@ import { useApi } from '../hooks/useApi';
 export default function Reports() {
     const api = useApi();
     
-    // Estados para guardar la data real del backend
-    const [kpis, setKpis] = useState(null);
-    const [topServices, setTopServices] = useState(null);
+    const [kpis, setKpis] = useState({
+        atencionesHoy: 0,
+        variacionAtenciones: "Cálculo en vivo",
+        tiempoEspera: 0,
+        estadoEspera: "Minutos en promedio",
+        boxesOperativos: 0,
+        totalBoxes: 0,
+        estadoBoxes: "Sincronizando..."
+    });
+    const [topServices, setTopServices] = useState([]);
     
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleTimeString());
     const [errorBackend, setErrorBackend] = useState(false);
 
-   const fetchDatos = async () => {
+    const fetchDatos = async () => {
         setIsRefreshing(true);
         setErrorBackend(false);
         try {
-            const [kpisResponse, servicesResponse, catalogServicesRes, appointmentsRes] = await Promise.all([
-                api.get('/report/kpis/today'),
-                api.get('/report/top-services'),
+            const [appointmentsRes, catalogServicesRes, boxesRes] = await Promise.all([
+                api.get('/appointments'),
                 api.get('/catalog/services'),
-                api.get('/appointments')
+                api.get('/catalog/boxes')
             ]);
 
-            let calculatedWaitTime = 15;
-            if (appointmentsRes.data && appointmentsRes.data.length > 0) {
-                const now = new Date();
-                const activeWaiting = appointmentsRes.data.filter(c => {
-                    const isPendingState = c.estado === 'EN_ESPERA' || c.estado === 'CONFIRMADA' || c.estado === 'SOLICITADA';
-                    if (!isPendingState || !c.fechaCreacion) return false;
-                    const createdDate = new Date(c.fechaCreacion);
-                    return createdDate.toDateString() === now.toDateString();
-                });
-                if (activeWaiting.length > 0) {
-                    const totalDiffMinutes = activeWaiting.reduce((acc, curr) => {
-                        const created = curr.fechaCreacion ? new Date(curr.fechaCreacion) : now;
-                        const diffMin = Math.max(0, (now - created) / 60000);
-                        return acc + diffMin;
-                    }, 0);
-                    calculatedWaitTime = Math.round(totalDiffMinutes / activeWaiting.length);
-                }
+            const appointmentsData = Array.isArray(appointmentsRes.data) ? appointmentsRes.data : [];
+            const catalogoData = Array.isArray(catalogServicesRes.data) ? catalogServicesRes.data : [];
+            const boxesData = Array.isArray(boxesRes.data) ? boxesRes.data : [];
+
+            const now = new Date();
+            const fechaHoyStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+            // Filtrar atenciones de hoy
+            const atencionesHoyList = appointmentsData.filter(a => {
+                // Asumiendo que podemos deducir la fecha o usar fechaCreacion si viene con timestamp de hoy, 
+                // o si viene asociada a fecha del cupo. Aquí usamos fechaCreacion o validamos general.
+                if (!a.fechaCreacion) return true; // si no hay filtro de fecha estricto por backend, toma todas o ajusta según formato
+                return String(a.fechaCreacion).startsWith(fechaHoyStr);
+            });
+
+            const atencionesCerradas = appointmentsData.filter(a => a.estado === 'CERRADA' || a.estado === 'CERRADO').length;
+            const atencionesEnEspera = appointmentsData.filter(a => a.estado === 'EN_ESPERA' || a.estado === 'CONFIRMADA' || a.estado === 'SOLICITADA');
+
+            // Cálculo dinámico de tiempo de espera
+            let calculatedWaitTime = 0;
+            if (atencionesEnEspera.length > 0) {
+                const totalDiffMinutes = atencionesEnEspera.reduce((acc, curr) => {
+                    const created = curr.fechaCreacion ? new Date(curr.fechaCreacion) : now;
+                    const diffMin = Math.max(0, (now - created) / 60000);
+                    return acc + diffMin;
+                }, 0);
+                calculatedWaitTime = Math.round(totalDiffMinutes / atencionesEnEspera.length);
             }
 
-            if (kpisResponse.data) {
-                const kpiData = kpisResponse.data;
-                const totalAtenciones = (kpiData.atencionesSolicitadas || 0) + (kpiData.atencionesConfirmadas || 0);
-                
-                setKpis({
-                    atencionesHoy: totalAtenciones,
-                    variacionAtenciones: `Cerradas: ${kpiData.atencionesCerradas || 0}`, 
-                    tiempoEspera: kpiData.tiempoEspera ?? calculatedWaitTime, // Usa dato de backend o cálculo dinámico
-                    estadoEspera: "Minutos en promedio",
-                    boxesOperativos: kpiData.boxesOperativos || 3, 
-                    totalBoxes: kpiData.totalBoxes || 3,
-                    estadoBoxes: "Disponibles"
-                });
-            }
+            // Boxes operativos (asumimos total de boxes del catálogo)
+            const totalBoxesCount = boxesData.length || 3;
+            setKpis({
+                atencionesHoy: appointmentsData.length,
+                variacionAtenciones: `Cerradas: ${atencionesCerradas}`,
+                tiempoEspera: calculatedWaitTime,
+                estadoEspera: "Minutos en promedio",
+                boxesOperativos: totalBoxesCount,
+                totalBoxes: totalBoxesCount,
+                estadoBoxes: "Operativos"
+            });
 
-            // 3. Mapeo de Demanda dinámico
-            if (servicesResponse.data && servicesResponse.data.length > 0) {
-                const servicesData = servicesResponse.data;
-                const catalogoData = catalogServicesRes.data || [];
+            // Mapeo de demanda por servicios real
+            const prestacionDict = {};
+            const paletaColores = ['#0f766e', '#0284c7', '#059669', '#d97706', '#8b5cf6', '#e11d48'];
+            catalogoData.forEach((prestacion, index) => {
+                prestacionDict[prestacion.id] = {
+                    nombre: prestacion.nombre,
+                    color: paletaColores[index % paletaColores.length]
+                };
+            });
 
-                const prestacionDict = {};
-                const paletaColores = ['#0f766e', '#0284c7', '#059669', '#d97706', '#8b5cf6', '#e11d48'];
-                
-                catalogoData.forEach((prestacion, index) => {
-                    prestacionDict[prestacion.id] = {
-                        nombre: prestacion.nombre,
-                        color: paletaColores[index % paletaColores.length] 
-                    };
-                });
+            // Contar frecuencia por prestacionId en las citas
+            const conteoPorServicio = {};
+            appointmentsData.forEach(item => {
+                conteoPorServicio[item.prestacionId] = (conteoPorServicio[item.prestacionId] || 0) + 1;
+            });
 
-                const totalSolicitudes = servicesData.reduce((acc, curr) => acc + curr.cantidadSolicitudes, 0);
+            const totalSolicitudes = appointmentsData.length || 1;
+            const mappedServices = catalogoData.map((serv, index) => {
+                const count = conteoPorServicio[serv.id] || 0;
+                const porcentajeCalc = Math.round((count / totalSolicitudes) * 100);
+                return {
+                    nombre: serv.nombre,
+                    porcentaje: porcentajeCalc,
+                    color: paletaColores[index % paletaColores.length]
+                };
+            });
 
-                const mappedServices = servicesData.map(item => {
-                    const infoPrestacion = prestacionDict[item.prestacionId] || { nombre: `Servicio No Identificado (#${item.prestacionId})`, color: '#94a3b8' };
-                    const porcentajeCalc = totalSolicitudes > 0 ? Math.round((item.cantidadSolicitudes / totalSolicitudes) * 100) : 0;
-                    
-                    return {
-                        nombre: infoPrestacion.nombre,
-                        porcentaje: porcentajeCalc,
-                        color: infoPrestacion.color
-                    };
-                });
-                
-                setTopServices(mappedServices);
-            }
-            
+            setTopServices(mappedServices.length > 0 ? mappedServices : [
+                { nombre: 'Sin atenciones registradas', porcentaje: 0, color: '#94a3b8' }
+            ]);
+
             setLastUpdate(new Date().toLocaleTimeString());
         } catch (error) {
-            console.error("No se pudo conectar al BFF. Usando datos de prueba.", error);
+            console.error("Error sincronizando reportes:", error);
             setErrorBackend(true);
-            setLastUpdate(new Date().toLocaleTimeString() + " (Modo Offline)");
+            setLastUpdate(new Date().toLocaleTimeString() + " (Error de Red)");
         } finally {
             setIsRefreshing(false);
         }
     };
 
-    // Al cargar la pantalla, intenta buscar los datos
     useEffect(() => {
         fetchDatos();
     }, []);
