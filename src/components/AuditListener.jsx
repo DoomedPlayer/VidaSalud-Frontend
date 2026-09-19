@@ -9,29 +9,45 @@ export default function AuditListener() {
     const api = useApi();
 
     useEffect(() => {
-        console.log("AuditListener detectó estado:", { isAuthenticated, cuentas: accounts.length });
         if (isAuthenticated && accounts.length > 0) {
             const cuenta = accounts[0];
             const sessionKey = `audit_login_${cuenta.username}`;
-            
-            if (!sessionStorage.getItem(sessionKey)) {
-                console.log("Intentando guardar auditoría de login...");
+
+            const tokenIat = cuenta.idTokenClaims?.iat?.toString();
+            const ultimaAuditoria = sessionStorage.getItem(sessionKey);
+
+            if (ultimaAuditoria !== tokenIat) {
+                console.log("Token nuevo detectado. Intentando guardar auditoría de login...");
+
+                const roles = cuenta.idTokenClaims?.roles || [];
+                const rolStr = roles.join(' ').toUpperCase();
+
+                let mensajePersonalizado = `El usuario ${cuenta.name} inició sesión en la plataforma.`;
                 
+                if (rolStr.includes('ADMIN')) {
+                    mensajePersonalizado = `Administrador ${cuenta.name} conectado. Acceso total a gestión y KPIs.`;
+                } else if (rolStr.includes('RECEPCION') || rolStr.includes('OPERADOR')) {
+                    mensajePersonalizado = `Recepcionista ${cuenta.name} en línea. Portal de admisión activado.`;
+                } else if (rolStr.includes('PACIENTE') || rolStr.includes('CLIENTE')) {
+                    mensajePersonalizado = `Paciente ${cuenta.name} accedió a su portal de reservas médicas.`;
+                } else if (rolStr.includes('AUDITOR')) {
+                    mensajePersonalizado = `Auditor ${cuenta.name} conectado. Sistema de trazabilidad en modo lectura.`;
+                }
+
                 registrarAuditoria(
                     api, 
                     cuenta, 
                     "LOGIN_SUCCESS", 
                     "Auth MSAL", 
-                    `El usuario ${cuenta.name} inició sesión en la plataforma.`
+                    mensajePersonalizado
                 ).then(() => {
-                    console.log("✅ Auditoría de login guardada exitosamente en BD.");
-                    sessionStorage.setItem(sessionKey, 'true');
+                    console.log("✅ Auditoría de login guardada exitosamente.");
+                    sessionStorage.setItem(sessionKey, tokenIat || 'true');
                 }).catch(err => {
-                    console.error("❌ Falló el guardado en backend. Código de error:", err.response?.status);
-                    console.error("Detalle del error:", err.response?.data || err.message);
+                    console.error("❌ Falló el guardado en backend.", err);
                 });
             } else {
-                console.log("Auditoría ya registrada para esta sesión (bloqueado por sessionStorage).");
+                console.log("Auditoría ya registrada para este token (bloqueado por sessionStorage).");
             }
         }
     }, [isAuthenticated, accounts, api]);
