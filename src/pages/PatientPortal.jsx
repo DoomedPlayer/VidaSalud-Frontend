@@ -150,13 +150,19 @@ export default function PatientPortal() {
         return cupos.some(c => {
             if (!c || !c.fechaHoraInicio) return false;
             
-            const parts = String(c.fechaHoraInicio).split('T');
-            const fechaCupo = parts[0];
+            // Normalizamos reemplazando espacio por 'T' por si viene en formato MySQL (YYYY-MM-DD HH:mm:ss)
+            const rawDateStr = String(c.fechaHoraInicio).replace(' ', 'T');
+            const parts = rawDateStr.split('T');
+            const fechaCupo = parts[0] || '';
             const horaCupo = parts ? parts.substring(0, 5) : '';
             
             const matchTime = fechaCupo === fechaReserva && horaCupo === hora;
+            
+            // Comparamos box ID sin importar si viene anidado o plano
             const boxIdCupo = c.box?.id !== undefined ? c.box.id : (c.boxId !== undefined ? c.boxId : c.box);
             const matchBox = boxSeleccionado ? String(boxIdCupo) === String(boxSeleccionado) : true;
+            
+            // Detecta si está ocupado (0, false, o 'false' en MySQL/API)
             const noDisponible = c.disponible === false || c.disponible === 0 || c.disponible === 'false';
             
             return matchTime && matchBox && noDisponible;
