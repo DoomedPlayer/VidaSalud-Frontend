@@ -64,7 +64,7 @@ export default function Reports() {
                 );
                 if (activeWaiting.length > 0) {
                     const totalDiffMinutes = activeWaiting.reduce((acc, curr) => {
-                        const created = curr.fechaCreacion ? new Date(curr.fechaCreacion) : now;
+                        const created = curr.fechaCupoStr ? new Date(curr.fechaCupoStr) : now;
                         const diffMin = Math.max(0, (now - created) / 60000);
                         return acc + diffMin;
                     }, 0);
