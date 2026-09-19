@@ -9,6 +9,7 @@ export default function PatientPortal() {
     const nombrePaciente = accounts[0]?.name?.toUpperCase() || 'PACIENTE';
     const correoPaciente = accounts[0]?.username || 'correo@dominio.com';
     
+    // Nueva variable para obtener la fecha de hoy y bloquear días anteriores
     const hoy = new Date().toISOString().split('T')[0];
     
     const [misHoras, setMisHoras] = useState([]);
@@ -16,57 +17,51 @@ export default function PatientPortal() {
     const [errorBackend, setErrorBackend] = useState(false);
     const [rutPaciente, setRutPaciente] = useState('');
 
-    // Estados para boxes y cupos
-    const [boxes, setBoxes] = useState([]);
-    const [cupos, setCupos] = useState([]);
-    const [boxSeleccionado, setBoxSeleccionado] = useState('');
-    const [cupoIdSeleccionado, setCupoIdSeleccionado] = useState('');
-
     // Formulario
+    const [boxes, setBoxes] = useState([]);
+    const [boxSeleccionado, setBoxSeleccionado] = useState('');
+
     const [especialidades, setEspecialidades] = useState([]);
     const [especialidad, setEspecialidad] = useState('');
     const [fechaReserva, setFechaReserva] = useState('');
+    const [horaReserva, setHoraReserva] = useState('08:00');
+    const horariosFijos = ['08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'];
 
     useEffect(() => {
         const fetchDatosIniciales = async () => {
             setIsLoading(true);
             setErrorBackend(false);
             try {
-                const [servicesRes, atencionesRes, cuposRes, boxesRes] = await Promise.all([
+                const [servicesRes, atencionesRes,boxesRes] = await Promise.all([
                     api.get('/catalog/services'),
                     api.get('/appointments'),
-                    api.get('/catalog/cupos'),
                     api.get('/catalog/boxes')
                 ]);
                 
                 const serviciosData = servicesRes.data || [];
-                const cuposData = cuposRes.data || [];
                 const boxesData = boxesRes.data || [];
-
                 setEspecialidades(serviciosData);
-                setCupos(cuposData);
                 setBoxes(boxesData);
 
                 const misCitasBackend = (atencionesRes.data || [])
                     .filter(c => c.pacienteId === correoPaciente)
                     .map(c => {
                         const prestacionInfo = serviciosData.find(s => s.id === c.prestacionId);
-                        const cupoInfo = cuposData.find(cp => cp.id === c.cupoId);
-                        const boxInfo = cupoInfo?.box ? (cupoInfo.box.codigo || cupoInfo.box) : 'Box Asignado';
+                        const boxInfo = boxesData.find(b => b.id === c.boxId || b.id === c.box?.id);
                         return {
                             id: c.id,
                             especialidad: prestacionInfo ? prestacionInfo.nombre : 'Consulta General',
                             medico: 'Médico Asignado', 
-                            sede: boxInfo, 
-                            fecha: c.fechaCreacion ? String(c.fechaCreacion).split('T')[0] : '',
-                            hora: c.fechaCreacion && String(c.fechaCreacion).includes('T') ? String(c.fechaCreacion).split('T').substring(0,5) : '',
+                            sede: boxInfo ? (boxInfo.codigo || boxInfo.nombre) : 'Sede San Bernardo', 
+                            fecha: c.fechaCreacion ? c.fechaCreacion.split('T')[0] : '',
+                            hora: c.fechaCreacion ? c.fechaCreacion.split('T')[1].substring(0,5) : '',
                             estado: c.estado
                         };
                     });
                 
                 setMisHoras(misCitasBackend);
             } catch (error) {
-                console.warn("Backend no disponible. Cargando modo offline.", error);
+                console.warn("Backend no disponible. Cargando modo offline.");
                 setErrorBackend(true);
             } finally {
                 setIsLoading(false);
@@ -76,55 +71,41 @@ export default function PatientPortal() {
         fetchDatosIniciales();
     }, []);
 
-    // Filtrar cupos por box seleccionado, fecha y disponibilidad
-    const cuposFiltrados = cupos.filter(c => {
-        const matchesBox = boxSeleccionado ? String(c.box?.id || c.boxId) === String(boxSeleccionado) : true;
-        const matchesDate = fechaReserva ? String(c.fechaHoraInicio).startsWith(fechaReserva) : true;
-        return matchesBox && matchesDate && (c.disponible !== false);
-    });
-
     const solicitarHora = async (e) => {
         e.preventDefault();
-        if (!fechaReserva || !especialidad || !rutPaciente || !cupoIdSeleccionado) {
-            alert('Por favor complete todos los campos, incluyendo la selección de box/cupo.');
-            return;
-        }
+        if (!fechaReserva || !especialidad || !rutPaciente) return;
 
         const prestacionObj = especialidades.find(p => p.nombre === especialidad);
-        const cupoSeleccionadoObj = cupos.find(c => String(c.id) === String(cupoIdSeleccionado));
-        const boxCodigo = cupoSeleccionadoObj?.box?.codigo || cupoSeleccionadoObj?.box || 'Box Asignado';
-        const fechaHoraFinal = cupoSeleccionadoObj?.fechaHoraInicio || `${fechaReserva}T08:00:00`;
+        const boxObj = boxes.find(b => String(b.id) === String(boxSeleccionado));
 
         const payload = {
             pacienteId: correoPaciente, 
             rut: rutPaciente,               
             nombrePaciente: nombrePaciente, 
             prestacionId: prestacionObj ? prestacionObj.id : 1, 
-            cupoId: parseInt(cupoIdSeleccionado), 
+            cupoId: boxSeleccionado ? parseInt(boxSeleccionado) : null, 
             estado: 'SOLICITADA',
-            fechaCreacion: fechaHoraFinal
+            fechaCreacion: `${fechaReserva}T${horaReserva}:00`
         };
 
         try {
             const res = await api.post('/appointments', payload);
-            const horaExtracted = fechaHoraFinal.includes('T') ? fechaHoraFinal.split('T').substring(0,5) : '08:00';
             const nuevaCita = {
-                id: res.data?.id || Math.floor(Math.random() * 900) + 100,
+                id: res.data.id || Math.floor(Math.random() * 900) + 100,
                 especialidad,
-                medico: 'Médico Asignado',
-                sede: boxCodigo,
+                medico: especialidad === 'Cardiología' ? 'Dra. Elena Valdés' : 'Dr. Roberto Gómez',
+                sede: boxObj ? (boxObj.codigo || boxObj.nombre) : 'Sede San Bernardo',
                 fecha: fechaReserva,
-                hora: horaExtracted,
+                hora: horaReserva,
                 estado: 'SOLICITADA'
             };
             setMisHoras([nuevaCita, ...misHoras]);
         } catch (error) {
             // Guardado Offline
-            const nuevaCitaLocal = { id: Math.floor(Math.random() * 900) + 100, especialidad, medico: 'Dr. Asignado', sede: boxCodigo, fecha: fechaReserva, hora: '08:00', estado: 'SOLICITADA' };
+            const nuevaCitaLocal = { id: Math.floor(Math.random() * 900) + 100, especialidad, medico: 'Dr. Asignado', sede: 'Sede Local', fecha: fechaReserva, hora: horaReserva, estado: 'SOLICITADA' };
             setMisHoras([nuevaCitaLocal, ...misHoras]);
         }
         setFechaReserva('');
-        setCupoIdSeleccionado('');
     };
 
     const anularHora = async (id) => {
@@ -158,12 +139,8 @@ export default function PatientPortal() {
                     <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>RUT Paciente</label><input type="text" value={rutPaciente} onChange={(e) => setRutPaciente(e.target.value)} placeholder="Ej: 12345678-9" required style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }} /></div>
                     <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Especialidad</label><select required value={especialidad} onChange={(e) => setEspecialidad(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }}><option value="">Seleccione especialidad...</option>{especialidades.map(p => (<option key={p.id} value={p.nombre}>{p.nombre}</option>))}</select></div>
                     <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Fecha Preferencia</label><input type="date" min={hoy} value={fechaReserva} onChange={(e) => setFechaReserva(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }} required /></div>
-                    <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Filtrar por Box (Opcional)</label><select value={boxSeleccionado} onChange={(e) => setBoxSeleccionado(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }}><option value="">Todos los boxes</option>{boxes.map(b => (<option key={b.id} value={b.id}>{b.codigo || b.nombre || `Box #${b.id}`}</option>))}</select></div>
-                    <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Seleccionar Cupo / Box / Hora</label><select value={cupoIdSeleccionado} onChange={(e) => setCupoIdSeleccionado(e.target.value)} required style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }}><option value="">Seleccione un cupo...</option>{cuposFiltrados.map(c => {
-                        const bCode = c.box?.codigo || c.box || 'Box';
-                        const timeStr = c.fechaHoraInicio ? String(c.fechaHoraInicio).replace('T', ' ') : 'Horario';
-                        return (<option key={c.id} value={c.id}>{bCode} - {timeStr}</option>);
-                    })}</select></div>
+                    <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Horario Preferencia</label><select value={horaReserva} onChange={(e) => setHoraReserva(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }}>{horariosFijos.map(h => <option key={h} value={h}>{h}</option>)}</select></div>
+                    <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Box (Opcional)</label><select value={boxSeleccionado} onChange={(e) => setBoxSeleccionado(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }}><option value="">Sin box específico</option>{boxes.map(b => (<option key={b.id} value={b.id}>{b.codigo || b.nombre || `Box #${b.id}`}</option>))}</select></div>
                     <div><button type="submit" style={{ backgroundColor: '#0284c7', color: 'white', border: 'none', padding: '0.8rem 1.25rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', width: '100%' }}>Reservar Hora</button></div>
                 </form>
             </div>
@@ -174,7 +151,7 @@ export default function PatientPortal() {
                     <div style={{ textAlign: 'center', padding: '2rem', color: '#0284c7' }}>Cargando horas médicas...</div>
                 ) : (
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
-                        <thead><tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}><th style={{ padding: '1rem' }}>ID Reserva</th><th style={{ padding: '1rem' }}>Especialidad</th><th style={{ padding: '1rem' }}>Médico Asignado</th><th style={{ padding: '1rem' }}>Sede/Box</th><th style={{ padding: '1rem' }}>Fecha y Hora</th><th style={{ padding: '1rem' }}>Estado</th><th style={{ padding: '1rem', textAlign: 'right' }}>Acciones</th></tr></thead>
+                        <thead><tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}><th style={{ padding: '1rem' }}>ID Reserva</th><th style={{ padding: '1rem' }}>Especialidad</th><th style={{ padding: '1rem' }}>Médico Asignado</th><th style={{ padding: '1rem' }}>Sede</th><th style={{ padding: '1rem' }}>Fecha y Hora</th><th style={{ padding: '1rem' }}>Estado</th><th style={{ padding: '1rem', textAlign: 'right' }}>Acciones</th></tr></thead>
                         <tbody>
                             {misHoras.map((h) => (
                                 <tr key={h.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
