@@ -19,6 +19,7 @@ export default function PatientPortal() {
 
     // Formulario
     const [boxes, setBoxes] = useState([]);
+    const [cupos, setCupos] = useState([]);
     const [boxSeleccionado, setBoxSeleccionado] = useState('');
 
     const [especialidades, setEspecialidades] = useState([]);
@@ -32,16 +33,19 @@ export default function PatientPortal() {
             setIsLoading(true);
             setErrorBackend(false);
             try {
-                const [servicesRes, atencionesRes,boxesRes] = await Promise.all([
+                const [servicesRes, atencionesRes,boxesRes, cuposRes] = await Promise.all([
                     api.get('/catalog/services'),
                     api.get('/appointments'),
-                    api.get('/catalog/boxes')
+                    api.get('/catalog/boxes'),
+                    api.get('/catalog/cupos')
                 ]);
                 
                 const serviciosData = servicesRes.data || [];
                 const boxesData = boxesRes.data || [];
+                const cuposData = cuposRes.data || [];
                 setEspecialidades(serviciosData);
                 setBoxes(boxesData);
+                setCupos(cuposData)
 
                 const misCitasBackend = (atencionesRes.data || [])
                     .filter(c => c.pacienteId === correoPaciente)
