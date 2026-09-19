@@ -146,12 +146,20 @@ export default function PatientPortal() {
     };
 
     const isHoraOcupada = (hora) => {
-        if (!fechaReserva) return false;
+        if (!fechaReserva || !Array.isArray(cupos)) return false;
         return cupos.some(c => {
-            if (!c.fechaHoraInicio) return false;
-            const matchTime = String(c.fechaHoraInicio).includes(`${fechaReserva}T${hora}`);
-            const matchBox = boxSeleccionado ? String(c.box?.id || c.boxId) === String(boxSeleccionado) : true;
-            return matchTime && matchBox && c.disponible === false;
+            if (!c || !c.fechaHoraInicio) return false;
+            
+            const parts = String(c.fechaHoraInicio).split('T');
+            const fechaCupo = parts[0];
+            const horaCupo = parts ? parts.substring(0, 5) : '';
+            
+            const matchTime = fechaCupo === fechaReserva && horaCupo === hora;
+            const boxIdCupo = c.box?.id !== undefined ? c.box.id : (c.boxId !== undefined ? c.boxId : c.box);
+            const matchBox = boxSeleccionado ? String(boxIdCupo) === String(boxSeleccionado) : true;
+            const noDisponible = c.disponible === false || c.disponible === 0 || c.disponible === 'false';
+            
+            return matchTime && matchBox && noDisponible;
         });
     };
 
