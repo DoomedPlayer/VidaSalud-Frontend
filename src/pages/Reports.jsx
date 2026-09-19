@@ -56,7 +56,7 @@ export default function Reports() {
                 a.estado === 'EN_ESPERA' || a.estado === 'CONFIRMADA' || a.estado === 'SOLICITADA'
             );
 
-            let calculatedWaitTime = 0;
+            let calculatedWaitTime = 10;
             if (atencionesEnEsperaHoy.length > 0) {
                 const now = new Date();
                 const activeWaiting = appointmentsRes.data.filter(c => 
