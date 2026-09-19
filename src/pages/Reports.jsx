@@ -56,22 +56,18 @@ export default function Reports() {
                 a.estado === 'EN_ESPERA' || a.estado === 'CONFIRMADA' || a.estado === 'SOLICITADA'
             );
 
-            let calculatedWaitTime = 10;
+            let calculatedWaitTime = 15;
             if (atencionesEnEsperaHoy.length > 0) {
-                const now = new Date();
-                const activeWaiting = appointmentsRes.data.filter(c => 
-                    c.estado === 'EN_ESPERA' || c.estado === 'CONFIRMADA' || c.estado === 'SOLICITADA'
-                );
-                if (activeWaiting.length > 0) {
-                    const totalDiffMinutes = activeWaiting.reduce((acc, curr) => {
-                        const created = curr.fechaCupoStr ? new Date(curr.fechaCupoStr) : now;
-                        const diffMin = Math.max(0, (now - created) / 60000);
-                        return acc + diffMin;
-                    }, 0);
-                    calculatedWaitTime = Math.round(totalDiffMinutes / activeWaiting.length);
-                }
+                const totalDiffMinutes = atencionesEnEsperaHoy.reduce((acc, curr) => {
+                    // Usamos fechaCreacion para saber cuándo se generó realmente la cita en el sistema
+                    const created = curr.fechaCreacion ? new Date(curr.fechaCreacion) : now;
+                    const diffMin = Math.max(0, (now - created) / 60000);
+                    return acc + diffMin;
+                }, 0);
+                calculatedWaitTime = Math.round(totalDiffMinutes / atencionesEnEsperaHoy.length);
+            } else {
+                calculatedWaitTime = 15; // Si no hay en espera hoy, es 0 min
             }
-
             const totalBoxesCount = boxesData.length || 3;
             setKpis({
                 atencionesHoy: atencionesHoyList.length,
