@@ -74,7 +74,7 @@ export default function PatientPortal() {
         };
 
         fetchDatosIniciales();
-    }, [api, correoPaciente]);
+    }, []);
 
     // Filtrar cupos por box seleccionado, fecha y disponibilidad
     const cuposFiltrados = cupos.filter(c => {
