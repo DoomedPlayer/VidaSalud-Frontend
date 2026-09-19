@@ -38,7 +38,8 @@ export default function Reports() {
             const now = new Date();
             const fechaHoyStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-           const appointmentsWithCupo = appointmentsData.map(a => {
+            // Enriquecer atenciones con la fecha del cupo asociado
+            const appointmentsWithCupo = appointmentsData.map(a => {
                 const cupo = cuposData.find(c => c.id === a.cupoId);
                 return {
                     ...a,
@@ -46,9 +47,11 @@ export default function Reports() {
                 };
             });
 
-            const atencionesCerradas = appointmentsData.filter(a => a.estado === 'CERRADA' || a.estado === 'CERRADO').length;
-            const atencionesEnEspera = appointmentsData.filter(a => a.estado === 'EN_ESPERA' || a.estado === 'CONFIRMADA' || a.estado === 'SOLICITADA');
+            // Declaración segura de atencionesHoyList
+            const atencionesHoyList = appointmentsWithCupo.filter(a => a.fechaCupoStr === fechaHoyStr);
+            const atencionesCerradas = atencionesHoyList.filter(a => a.estado === 'CERRADA' || a.estado === 'CERRADO').length;
 
+            // Filtrar pendientes/en espera de HOY para el tiempo de espera real
             const atencionesEnEsperaHoy = atencionesHoyList.filter(a => 
                 a.estado === 'EN_ESPERA' || a.estado === 'CONFIRMADA' || a.estado === 'SOLICITADA'
             );
@@ -65,7 +68,7 @@ export default function Reports() {
 
             const totalBoxesCount = boxesData.length || 3;
             setKpis({
-                atencionesHoy: atencionesHoyList.length, // <--- Usamos .length en lugar del array
+                atencionesHoy: atencionesHoyList.length,
                 variacionAtenciones: `Cerradas: ${atencionesCerradas}`,
                 tiempoEspera: calculatedWaitTime,
                 estadoEspera: "Minutos en promedio",
@@ -74,17 +77,8 @@ export default function Reports() {
                 estadoBoxes: "Operativos"
             });
 
-            // Mapeo de demanda por servicios real
-            const prestacionDict = {};
+            // Mapeo de demanda por servicios
             const paletaColores = ['#0f766e', '#0284c7', '#059669', '#d97706', '#8b5cf6', '#e11d48'];
-            catalogoData.forEach((prestacion, index) => {
-                prestacionDict[prestacion.id] = {
-                    nombre: prestacion.nombre,
-                    color: paletaColores[index % paletaColores.length]
-                };
-            });
-
-            // Contar frecuencia por prestacionId en las citas
             const conteoPorServicio = {};
             appointmentsData.forEach(item => {
                 conteoPorServicio[item.prestacionId] = (conteoPorServicio[item.prestacionId] || 0) + 1;
