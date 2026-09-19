@@ -9,7 +9,6 @@ export default function PatientPortal() {
     const nombrePaciente = accounts[0]?.name?.toUpperCase() || 'PACIENTE';
     const correoPaciente = accounts[0]?.username || 'correo@dominio.com';
     
-    // Nueva variable para obtener la fecha de hoy y bloquear días anteriores
     const hoy = new Date().toISOString().split('T')[0];
     
     const [misHoras, setMisHoras] = useState([]);
@@ -33,7 +32,7 @@ export default function PatientPortal() {
             setIsLoading(true);
             setErrorBackend(false);
             try {
-                const [servicesRes, atencionesRes,boxesRes, cuposRes] = await Promise.all([
+                const [servicesRes, atencionesRes, boxesRes, cuposRes] = await Promise.all([
                     api.get('/catalog/services'),
                     api.get('/appointments'),
                     api.get('/catalog/boxes'),
@@ -45,20 +44,25 @@ export default function PatientPortal() {
                 const cuposData = cuposRes.data || [];
                 setEspecialidades(serviciosData);
                 setBoxes(boxesData);
-                setCupos(cuposData)
+                setCupos(cuposData);
 
                 const misCitasBackend = (atencionesRes.data || [])
                     .filter(c => c.pacienteId === correoPaciente)
                     .map(c => {
                         const prestacionInfo = serviciosData.find(s => s.id === c.prestacionId);
-                        const boxInfo = boxesData.find(b => b.id === c.boxId || b.id === c.box?.id);
+                        
+                        // Buscamos el box evaluando si viene directo en la cita, o si está dentro del cupo asociado
+                        const cupoAsociado = cuposData.find(cupo => cupo.id === c.cupoId);
+                        const idDelBox = c.boxId || c.box?.id || cupoAsociado?.box?.id || cupoAsociado?.boxId;
+                        const boxInfo = boxesData.find(b => String(b.id) === String(idDelBox));
+
                         return {
                             id: c.id,
                             especialidad: prestacionInfo ? prestacionInfo.nombre : 'Consulta General',
                             medico: 'Médico Asignado', 
-                            sede: boxInfo ? (boxInfo.codigo || boxInfo.nombre) : 'Sede San Bernardo', 
-                            fecha: c.fechaCreacion ? c.fechaCreacion.split('T')[0] : '',
-                            hora: c.fechaCreacion ? c.fechaCreacion.split('T')[1].substring(0,5) : '',
+                            box: boxInfo ? (boxInfo.codigo || boxInfo.nombre) : 'Box Por Asignar', 
+                            fecha: c.fechaCreacion ? String(c.fechaCreacion).split('T')[0] : '',
+                            hora: c.fechaCreacion && String(c.fechaCreacion).includes('T') ? String(c.fechaCreacion).split('T')[1].substring(0,5) : '',
                             estado: c.estado
                         };
                     });
@@ -73,7 +77,7 @@ export default function PatientPortal() {
         };
 
         fetchDatosIniciales();
-    }, []);
+    }, [api, correoPaciente]);
 
     const solicitarHora = async (e) => {
         e.preventDefault();
@@ -103,13 +107,13 @@ export default function PatientPortal() {
                 cupoIdAsignado = resCupo.data?.id || cupoIdAsignado;
             }
 
-            // 2. Guardar la atención vinculando el cupoId real
             const payloadAtencion = {
                 pacienteId: correoPaciente, 
                 rut: rutPaciente,               
                 nombrePaciente: nombrePaciente, 
                 prestacionId: prestacionObj ? prestacionObj.id : 1, 
                 cupoId: cupoIdAsignado, 
+                boxId: boxSeleccionado ? parseInt(boxSeleccionado) : null,
                 estado: 'SOLICITADA',
                 fechaCreacion: fechaHoraInicio
             };
@@ -119,7 +123,7 @@ export default function PatientPortal() {
                 id: res.data?.id || Math.floor(Math.random() * 900) + 100,
                 especialidad,
                 medico: 'Médico Asignado',
-                sede: boxObj ? (boxObj.codigo || boxObj.nombre) : 'Sede San Bernardo',
+                box: boxObj ? (boxObj.codigo || boxObj.nombre) : 'Box Por Asignar',
                 fecha: fechaReserva,
                 hora: horaReserva,
                 estado: 'SOLICITADA'
@@ -127,7 +131,7 @@ export default function PatientPortal() {
             setMisHoras([nuevaCita, ...misHoras]);
         } catch (error) {
             console.warn("Guardando reserva en modo offline / fallback:", error);
-            const nuevaCitaLocal = { id: Math.floor(Math.random() * 900) + 100, especialidad, medico: 'Dr. Asignado', sede: boxObj ? (boxObj.codigo || boxObj.nombre) : 'Sede Local', fecha: fechaReserva, hora: horaReserva, estado: 'SOLICITADA' };
+            const nuevaCitaLocal = { id: Math.floor(Math.random() * 900) + 100, especialidad, medico: 'Dr. Asignado', box: boxObj ? (boxObj.codigo || boxObj.nombre) : 'Box Por Asignar', fecha: fechaReserva, hora: horaReserva, estado: 'SOLICITADA' };
             setMisHoras([nuevaCitaLocal, ...misHoras]);
         }
         setFechaReserva('');
@@ -150,19 +154,18 @@ export default function PatientPortal() {
         return cupos.some(c => {
             if (!c || !c.fechaHoraInicio) return false;
             
-            // Normalizamos reemplazando espacio por 'T' por si viene en formato MySQL (YYYY-MM-DD HH:mm:ss)
             const rawDateStr = String(c.fechaHoraInicio).replace(' ', 'T');
             const parts = rawDateStr.split('T');
             const fechaCupo = parts[0] || '';
-            const horaCupo = parts ? parts.substring(0, 5) : '';
+            
+            // CORRECCIÓN: Validamos que parts[1] exista antes de extraer el substring
+            const horaCupo = parts[1] ? parts[1].substring(0, 5) : '';
             
             const matchTime = fechaCupo === fechaReserva && horaCupo === hora;
             
-            // Comparamos box ID sin importar si viene anidado o plano
             const boxIdCupo = c.box?.id !== undefined ? c.box.id : (c.boxId !== undefined ? c.boxId : c.box);
             const matchBox = boxSeleccionado ? String(boxIdCupo) === String(boxSeleccionado) : true;
             
-            // Detecta si está ocupado (0, false, o 'false' en MySQL/API)
             const noDisponible = c.disponible === false || c.disponible === 0 || c.disponible === 'false';
             
             return matchTime && matchBox && noDisponible;
@@ -190,7 +193,7 @@ export default function PatientPortal() {
                     <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Especialidad</label><select required value={especialidad} onChange={(e) => setEspecialidad(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }}><option value="">Seleccione especialidad...</option>{especialidades.map(p => (<option key={p.id} value={p.nombre}>{p.nombre}</option>))}</select></div>
                     <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Fecha Preferencia</label><input type="date" min={hoy} value={fechaReserva} onChange={(e) => setFechaReserva(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }} required /></div>
                     <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Horario Preferencia</label><select value={horaReserva} onChange={(e) => setHoraReserva(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }}>{horariosFijos.map(h => {const ocupada = isHoraOcupada(h);return (<option key={h} value={h} disabled={ocupada} style={{ color: ocupada ? '#94a3b8' : 'inherit', backgroundColor: ocupada ? '#f1f5f9' : 'white' }}>{h} {ocupada ? '— Ocupado' : ''}</option>);})}</select></div>
-                    <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Box</label><select value={boxSeleccionado} onChange={(e) => setBoxSeleccionado(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }}><option value="">Sin box específico</option>{boxes.map(b => (<option key={b.id} value={b.id}>{b.codigo || b.nombre || `Box #${b.id}`}</option>))}</select></div>
+                    <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Box (Opcional)</label><select value={boxSeleccionado} onChange={(e) => setBoxSeleccionado(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }}><option value="">Sin box específico</option>{boxes.map(b => (<option key={b.id} value={b.id}>{b.codigo || b.nombre || `Box #${b.id}`}</option>))}</select></div>
                     <div><button type="submit" style={{ backgroundColor: '#0284c7', color: 'white', border: 'none', padding: '0.8rem 1.25rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', width: '100%' }}>Reservar Hora</button></div>
                 </form>
             </div>
@@ -201,11 +204,11 @@ export default function PatientPortal() {
                     <div style={{ textAlign: 'center', padding: '2rem', color: '#0284c7' }}>Cargando horas médicas...</div>
                 ) : (
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
-                        <thead><tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}><th style={{ padding: '1rem' }}>ID Reserva</th><th style={{ padding: '1rem' }}>Especialidad</th><th style={{ padding: '1rem' }}>Médico Asignado</th><th style={{ padding: '1rem' }}>Sede</th><th style={{ padding: '1rem' }}>Fecha y Hora</th><th style={{ padding: '1rem' }}>Estado</th><th style={{ padding: '1rem', textAlign: 'right' }}>Acciones</th></tr></thead>
+                        <thead><tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}><th style={{ padding: '1rem' }}>ID Reserva</th><th style={{ padding: '1rem' }}>Especialidad</th><th style={{ padding: '1rem' }}>Médico Asignado</th><th style={{ padding: '1rem' }}>Box</th><th style={{ padding: '1rem' }}>Fecha y Hora</th><th style={{ padding: '1rem' }}>Estado</th><th style={{ padding: '1rem', textAlign: 'right' }}>Acciones</th></tr></thead>
                         <tbody>
                             {misHoras.map((h) => (
                                 <tr key={h.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                                    <td style={{ padding: '1rem' }}>#{h.id}</td><td style={{ padding: '1rem', fontWeight: '700' }}>{h.especialidad}</td><td style={{ padding: '1rem' }}>{h.medico}</td><td style={{ padding: '1rem' }}>{h.sede}</td>
+                                    <td style={{ padding: '1rem' }}>#{h.id}</td><td style={{ padding: '1rem', fontWeight: '700' }}>{h.especialidad}</td><td style={{ padding: '1rem' }}>{h.medico}</td><td style={{ padding: '1rem' }}>{h.box}</td>
                                     <td style={{ padding: '1rem' }}><div>{h.fecha}</div><div>{h.hora} hrs</div></td>
                                     <td style={{ padding: '1rem' }}>
                                         <span style={{ backgroundColor: h.estado === 'SOLICITADA' ? '#fef3c7' : (h.estado === 'CANCELADA' ? '#fee2e2' : '#d1fae5'), color: h.estado === 'SOLICITADA' ? '#d97706' : (h.estado === 'CANCELADA' ? '#ef4444' : '#059669'), padding: '0.3rem 0.8rem', borderRadius: '20px', fontWeight: '700', fontSize: '0.75rem' }}>
