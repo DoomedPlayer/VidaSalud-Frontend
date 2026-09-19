@@ -58,12 +58,18 @@ export default function Reports() {
 
             let calculatedWaitTime = 0;
             if (atencionesEnEsperaHoy.length > 0) {
-                const totalDiffMinutes = atencionesEnEsperaHoy.reduce((acc, curr) => {
-                    const created = curr.fechaCreacion ? new Date(curr.fechaCreacion) : now;
-                    const diffMin = Math.max(0, (now - created) / 60000);
-                    return acc + diffMin;
-                }, 0);
-                calculatedWaitTime = Math.round(totalDiffMinutes / atencionesEnEsperaHoy.length);
+                const now = new Date();
+                const activeWaiting = appointmentsRes.data.filter(c => 
+                    c.estado === 'EN_ESPERA' || c.estado === 'CONFIRMADA' || c.estado === 'SOLICITADA'
+                );
+                if (activeWaiting.length > 0) {
+                    const totalDiffMinutes = activeWaiting.reduce((acc, curr) => {
+                        const created = curr.fechaCreacion ? new Date(curr.fechaCreacion) : now;
+                        const diffMin = Math.max(0, (now - created) / 60000);
+                        return acc + diffMin;
+                    }, 0);
+                    calculatedWaitTime = Math.round(totalDiffMinutes / activeWaiting.length);
+                }
             }
 
             const totalBoxesCount = boxesData.length || 3;
