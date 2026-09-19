@@ -61,7 +61,7 @@ export default function Reports() {
             // Boxes operativos (asumimos total de boxes del catálogo)
             const totalBoxesCount = boxesData.length || 3;
             setKpis({
-                atencionesHoy: appointmentsData.length,
+                atencionesHoy: atencionesHoyList,
                 variacionAtenciones: `Cerradas: ${atencionesCerradas}`,
                 tiempoEspera: calculatedWaitTime,
                 estadoEspera: "Minutos en promedio",
