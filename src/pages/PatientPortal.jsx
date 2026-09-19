@@ -73,27 +73,48 @@ export default function PatientPortal() {
 
     const solicitarHora = async (e) => {
         e.preventDefault();
-        if (!fechaReserva || !especialidad || !rutPaciente) return;
+        if (!fechaReserva || !horaReserva || !especialidad || !rutPaciente) return;
 
         const prestacionObj = especialidades.find(p => p.nombre === especialidad);
         const boxObj = boxes.find(b => String(b.id) === String(boxSeleccionado));
 
-        const payload = {
-            pacienteId: correoPaciente, 
-            rut: rutPaciente,               
-            nombrePaciente: nombrePaciente, 
-            prestacionId: prestacionObj ? prestacionObj.id : 1, 
-            cupoId: boxSeleccionado ? parseInt(boxSeleccionado) : null, 
-            estado: 'SOLICITADA',
-            fechaCreacion: `${fechaReserva}T${horaReserva}:00`
-        };
+        const fechaBase = fechaReserva;
+        const fechaHoraInicio = `${fechaBase}T${horaReserva}:00`;
+        const fechaFinObj = new Date(fechaHoraInicio);
+        fechaFinObj.setMinutes(fechaFinObj.getMinutes() + 30);
+        const horaFinFormat = String(fechaFinObj.getHours()).padStart(2, '0') + ':' + String(fechaFinObj.getMinutes()).padStart(2, '0');
+        const fechaHoraFin = `${fechaBase}T${horaFinFormat}:00`;
 
         try {
-            const res = await api.post('/appointments', payload);
+            let cupoIdAsignado = 1;
+            
+            if (boxSeleccionado) {
+                const payloadCupo = {
+                    box: { id: parseInt(boxSeleccionado) },
+                    fechaHoraInicio: fechaHoraInicio,
+                    fechaHoraFin: fechaHoraFin,
+                    disponible: false
+                };
+                const resCupo = await api.post('/catalog/cupos', payloadCupo);
+                cupoIdAsignado = resCupo.data?.id || cupoIdAsignado;
+            }
+
+            // 2. Guardar la atención vinculando el cupoId real
+            const payloadAtencion = {
+                pacienteId: correoPaciente, 
+                rut: rutPaciente,               
+                nombrePaciente: nombrePaciente, 
+                prestacionId: prestacionObj ? prestacionObj.id : 1, 
+                cupoId: cupoIdAsignado, 
+                estado: 'SOLICITADA',
+                fechaCreacion: fechaHoraInicio
+            };
+
+            const res = await api.post('/appointments', payloadAtencion);
             const nuevaCita = {
-                id: res.data.id || Math.floor(Math.random() * 900) + 100,
+                id: res.data?.id || Math.floor(Math.random() * 900) + 100,
                 especialidad,
-                medico: especialidad === 'Cardiología' ? 'Dra. Elena Valdés' : 'Dr. Roberto Gómez',
+                medico: 'Médico Asignado',
                 sede: boxObj ? (boxObj.codigo || boxObj.nombre) : 'Sede San Bernardo',
                 fecha: fechaReserva,
                 hora: horaReserva,
@@ -101,11 +122,12 @@ export default function PatientPortal() {
             };
             setMisHoras([nuevaCita, ...misHoras]);
         } catch (error) {
-            // Guardado Offline
-            const nuevaCitaLocal = { id: Math.floor(Math.random() * 900) + 100, especialidad, medico: 'Dr. Asignado', sede: 'Sede Local', fecha: fechaReserva, hora: horaReserva, estado: 'SOLICITADA' };
+            console.warn("Guardando reserva en modo offline / fallback:", error);
+            const nuevaCitaLocal = { id: Math.floor(Math.random() * 900) + 100, especialidad, medico: 'Dr. Asignado', sede: boxObj ? (boxObj.codigo || boxObj.nombre) : 'Sede Local', fecha: fechaReserva, hora: horaReserva, estado: 'SOLICITADA' };
             setMisHoras([nuevaCitaLocal, ...misHoras]);
         }
         setFechaReserva('');
+        setBoxSeleccionado('');
     };
 
     const anularHora = async (id) => {
