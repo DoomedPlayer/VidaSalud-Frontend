@@ -38,16 +38,18 @@ export default function Reports() {
             const now = new Date();
             const fechaHoyStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-            // Enriquecer atenciones con la fecha del cupo asociado
             const appointmentsWithCupo = appointmentsData.map(a => {
                 const cupo = cuposData.find(c => c.id === a.cupoId);
+                // Normalizamos a formato ISO válido (reemplazando espacio por 'T' si viene de MySQL)
+                const fechaInicioRaw = cupo?.fechaHoraInicio ? String(cupo.fechaHoraInicio).replace(' ', 'T') : '';
                 return {
                     ...a,
-                    fechaCupoStr: cupo?.fechaHoraInicio ? String(cupo.fechaHoraInicio).substring(0, 10) : ''
+                    fechaCupoStr: fechaInicioRaw ? fechaInicioRaw.substring(0, 10) : '',
+                    fechaHoraCupoCompleta: fechaInicioRaw // Guardamos la hora exacta del turno
                 };
             });
 
-            // Declaración segura de atencionesHoyList
+            // Filtrar atenciones exclusivas de hoy
             const atencionesHoyList = appointmentsWithCupo.filter(a => a.fechaCupoStr === fechaHoyStr);
             const atencionesCerradas = atencionesHoyList.filter(a => a.estado === 'CERRADA' || a.estado === 'CERRADO').length;
 
@@ -56,17 +58,17 @@ export default function Reports() {
                 a.estado === 'EN_ESPERA' || a.estado === 'CONFIRMADA' || a.estado === 'SOLICITADA'
             );
 
-            let calculatedWaitTime = 15;
+            let calculatedWaitTime = 0;
             if (atencionesEnEsperaHoy.length > 0) {
                 const totalDiffMinutes = atencionesEnEsperaHoy.reduce((acc, curr) => {
-                    // Usamos fechaCreacion para saber cuándo se generó realmente la cita en el sistema
-                    const created = curr.fechaCreacion ? new Date(curr.fechaCreacion) : now;
-                    const diffMin = Math.max(0, (now - created) / 60000);
+                    // Calculamos a partir de la fecha y hora exacta del CUPO
+                    const cupoTime = curr.fechaHoraCupoCompleta ? new Date(curr.fechaHoraCupoCompleta) : now;
+                    
+                    // Math.max evita valores negativos si la hora del cupo aún no llega
+                    const diffMin = Math.max(0, (now - cupoTime) / 60000);
                     return acc + diffMin;
                 }, 0);
                 calculatedWaitTime = Math.round(totalDiffMinutes / atencionesEnEsperaHoy.length);
-            } else {
-                calculatedWaitTime = 15; // Si no hay en espera hoy, es 0 min
             }
             const totalBoxesCount = boxesData.length || 3;
             setKpis({
