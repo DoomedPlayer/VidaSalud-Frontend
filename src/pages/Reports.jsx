@@ -23,45 +23,49 @@ export default function Reports() {
         setIsRefreshing(true);
         setErrorBackend(false);
         try {
-            const [appointmentsRes, catalogServicesRes, boxesRes] = await Promise.all([
+            const [appointmentsRes, catalogServicesRes, boxesRes, cuposRes] = await Promise.all([
                 api.get('/appointments'),
                 api.get('/catalog/services'),
-                api.get('/catalog/boxes')
+                api.get('/catalog/boxes'),
+                api.get('/catalog/cupos')
             ]);
 
             const appointmentsData = Array.isArray(appointmentsRes.data) ? appointmentsRes.data : [];
             const catalogoData = Array.isArray(catalogServicesRes.data) ? catalogServicesRes.data : [];
             const boxesData = Array.isArray(boxesRes.data) ? boxesRes.data : [];
+            const cuposData = Array.isArray(cuposRes.data) ? cuposRes.data : [];
 
             const now = new Date();
             const fechaHoyStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-            // Filtrar atenciones de hoy
-            const atencionesHoyList = appointmentsData.filter(a => {
-                // Asumiendo que podemos deducir la fecha o usar fechaCreacion si viene con timestamp de hoy, 
-                // o si viene asociada a fecha del cupo. Aquí usamos fechaCreacion o validamos general.
-                if (!a.fechaCreacion) return true; // si no hay filtro de fecha estricto por backend, toma todas o ajusta según formato
-                return String(a.fechaCreacion).startsWith(fechaHoyStr);
+           const appointmentsWithCupo = appointmentsData.map(a => {
+                const cupo = cuposData.find(c => c.id === a.cupoId);
+                return {
+                    ...a,
+                    fechaCupoStr: cupo?.fechaHoraInicio ? String(cupo.fechaHoraInicio).substring(0, 10) : ''
+                };
             });
 
             const atencionesCerradas = appointmentsData.filter(a => a.estado === 'CERRADA' || a.estado === 'CERRADO').length;
             const atencionesEnEspera = appointmentsData.filter(a => a.estado === 'EN_ESPERA' || a.estado === 'CONFIRMADA' || a.estado === 'SOLICITADA');
 
-            // Cálculo dinámico de tiempo de espera
+            const atencionesEnEsperaHoy = atencionesHoyList.filter(a => 
+                a.estado === 'EN_ESPERA' || a.estado === 'CONFIRMADA' || a.estado === 'SOLICITADA'
+            );
+
             let calculatedWaitTime = 0;
-            if (atencionesEnEspera.length > 0) {
-                const totalDiffMinutes = atencionesEnEspera.reduce((acc, curr) => {
+            if (atencionesEnEsperaHoy.length > 0) {
+                const totalDiffMinutes = atencionesEnEsperaHoy.reduce((acc, curr) => {
                     const created = curr.fechaCreacion ? new Date(curr.fechaCreacion) : now;
                     const diffMin = Math.max(0, (now - created) / 60000);
                     return acc + diffMin;
                 }, 0);
-                calculatedWaitTime = Math.round(totalDiffMinutes / atencionesEnEspera.length);
+                calculatedWaitTime = Math.round(totalDiffMinutes / atencionesEnEsperaHoy.length);
             }
 
-            // Boxes operativos (asumimos total de boxes del catálogo)
             const totalBoxesCount = boxesData.length || 3;
             setKpis({
-                atencionesHoy: atencionesHoyList,
+                atencionesHoy: atencionesHoyList.length, // <--- Usamos .length en lugar del array
                 variacionAtenciones: `Cerradas: ${atencionesCerradas}`,
                 tiempoEspera: calculatedWaitTime,
                 estadoEspera: "Minutos en promedio",
