@@ -77,7 +77,7 @@ export default function PatientPortal() {
         };
 
         fetchDatosIniciales();
-    }, [api, correoPaciente]);
+    }, []);
 
     const solicitarHora = async (e) => {
         e.preventDefault();
