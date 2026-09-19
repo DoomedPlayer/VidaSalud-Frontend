@@ -27,29 +27,35 @@ export default function ReceptionistPortal() {
                 api.get('/catalog/boxes')
             ]);
             
-            const cuposData = cuposRes.data || [];
-            const servicesData = servicesRes.data || [];
-            const boxesData = boxesRes.data || [];
+            const atencionesData = Array.isArray(atencionesRes.data) ? atencionesRes.data : (atencionesRes.data?.content || []);
+            const cuposData = Array.isArray(cuposRes.data) ? cuposRes.data : [];
+            const servicesData = Array.isArray(servicesRes.data) ? servicesRes.data : [];
+            const boxesData = Array.isArray(boxesRes.data) ? boxesRes.data : [];
 
             if (boxesData.length > 0) {
                     const listaBoxes = boxesData.map(b => b.codigo || b.nombre || String(b));
                     setBoxesDisponibles(listaBoxes);
                 }
 
-            const dataMapeada = atencionesRes.data.map(item => {
-                const cupoAsignado = cuposData.find(c => c.id === item.cupoId);
-                const codigoBox = (cupoAsignado && cupoAsignado.box) ? cupoAsignado.box.codigo : 'Box Por Asignar';
-                const prestacionInfo = servicesData.find(s => s.id === item.prestacionId);
+            const now = new Date();
+            const fechaHoyStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-                return {
-                    id: item.id,
-                    paciente: item.nombrePaciente || 'Paciente Registrado', 
-                    rut: item.rut || 'Sin RUT',                         
-                    especialidad: prestacionInfo ? prestacionInfo.nombre : 'Consulta General',
-                    box: codigoBox,
-                    estado: item.estado || 'SOLICITADA' 
-                };
-            });
+            const dataMapeada = atencionesData.map(item => {
+                    const cupoAsignado = cuposData.find(c => c.id === item.cupoId);
+                    const codigoBox = (cupoAsignado && cupoAsignado.box) ? (cupoAsignado.box.codigo || cupoAsignado.box) : 'Box Por Asignar';
+                    const prestacionInfo = servicesData.find(s => s.id === item.prestacionId);
+                    const fechaCupo = cupoAsignado?.fechaHoraInicio ? String(cupoAsignado.fechaHoraInicio).substring(0, 10) : '';
+
+                    return {
+                        id: item.id,
+                        paciente: item.nombrePaciente || 'Paciente Registrado', 
+                        rut: item.rut || 'Sin RUT',                         
+                        especialidad: prestacionInfo ? prestacionInfo.nombre : 'Consulta General',
+                        box: codigoBox,
+                        estado: item.estado || 'SOLICITADA',
+                        fecha: fechaCupo
+                    };
+                }).filter(item => item.fecha === fechaHoyStr);
             
             setRecepcionQueue(dataMapeada);
             } catch (error) {
