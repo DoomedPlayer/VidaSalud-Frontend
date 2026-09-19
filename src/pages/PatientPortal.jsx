@@ -141,6 +141,16 @@ export default function PatientPortal() {
         }
     };
 
+    const isHoraOcupada = (hora) => {
+        if (!fechaReserva) return false;
+        return cupos.some(c => {
+            if (!c.fechaHoraInicio) return false;
+            const matchTime = String(c.fechaHoraInicio).includes(`${fechaReserva}T${hora}`);
+            const matchBox = boxSeleccionado ? String(c.box?.id || c.boxId) === String(boxSeleccionado) : true;
+            return matchTime && matchBox && c.disponible === false;
+        });
+    };
+
     return (
         <div>
             <div style={{ backgroundColor: '#0284c7', borderRadius: '16px', padding: '2.5rem', color: 'white', marginBottom: '2rem', boxShadow: '0 10px 15px -3px rgba(2, 132, 199, 0.2)' }}>
@@ -161,8 +171,8 @@ export default function PatientPortal() {
                     <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>RUT Paciente</label><input type="text" value={rutPaciente} onChange={(e) => setRutPaciente(e.target.value)} placeholder="Ej: 12345678-9" required style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }} /></div>
                     <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Especialidad</label><select required value={especialidad} onChange={(e) => setEspecialidad(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }}><option value="">Seleccione especialidad...</option>{especialidades.map(p => (<option key={p.id} value={p.nombre}>{p.nombre}</option>))}</select></div>
                     <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Fecha Preferencia</label><input type="date" min={hoy} value={fechaReserva} onChange={(e) => setFechaReserva(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }} required /></div>
-                    <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Horario Preferencia</label><select value={horaReserva} onChange={(e) => setHoraReserva(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }}>{horariosFijos.map(h => <option key={h} value={h}>{h}</option>)}</select></div>
-                    <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Box (Opcional)</label><select value={boxSeleccionado} onChange={(e) => setBoxSeleccionado(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }}><option value="">Sin box específico</option>{boxes.map(b => (<option key={b.id} value={b.id}>{b.codigo || b.nombre || `Box #${b.id}`}</option>))}</select></div>
+                    <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Horario Preferencia</label><select value={horaReserva} onChange={(e) => setHoraReserva(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }}>{horariosFijos.map(h => {const ocupada = isHoraOcupada(h);return (<option key={h} value={h} disabled={ocupada} style={{ color: ocupada ? '#94a3b8' : 'inherit', backgroundColor: ocupada ? '#f1f5f9' : 'white' }}>{h} {ocupada ? '— Ocupado' : ''}</option>);})}</select></div>
+                    <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Box</label><select value={boxSeleccionado} onChange={(e) => setBoxSeleccionado(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }}><option value="">Sin box específico</option>{boxes.map(b => (<option key={b.id} value={b.id}>{b.codigo || b.nombre || `Box #${b.id}`}</option>))}</select></div>
                     <div><button type="submit" style={{ backgroundColor: '#0284c7', color: 'white', border: 'none', padding: '0.8rem 1.25rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', width: '100%' }}>Reservar Hora</button></div>
                 </form>
             </div>
