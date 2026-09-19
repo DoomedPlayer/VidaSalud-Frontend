@@ -86,14 +86,20 @@ export default function ReceptionistPortal() {
     };
 
     const marcarLlegada = (id) => actualizarEstado(id, 'EN_ESPERA');
+    const finalizarAtencion = (id) => actualizarEstado(id, 'CERRADA');
+    const cancelarAtencion = (id) => {
+        if (window.confirm('¿Está seguro de que desea cancelar esta atención?')) {
+            actualizarEstado(id, 'CANCELADA');
+        }
+    };
     
     const abrirModal = (accion, paciente) => setModalBox({ isOpen: true, accion: accion, pacienteId: paciente.id, boxDestino: paciente.box !== 'Box Por Asignar' ? paciente.box : boxesDisponibles[0], nombrePaciente: paciente.paciente });
     
     const confirmarModal = () => {
         if (modalBox.accion === 'DERIVAR') {
             actualizarEstado(modalBox.pacienteId, 'EN_ATENCION');
-            // Aquí idealmente haríamos un PUT para actualizar el box, pero simulamos el cambio visual
-            setRecepcionQueue(recepcionQueue.map(item => item.id === modalBox.pacienteId ? { ...item, box: modalBox.boxDestino, estado: 'CERRADA' } : item));
+            // Corrección: El estado pasa a EN_ATENCION en lugar de CERRADA para mantener coherencia en el flujo
+            setRecepcionQueue(recepcionQueue.map(item => item.id === modalBox.pacienteId ? { ...item, box: modalBox.boxDestino, estado: 'EN_ATENCION' } : item));
         } else {
             setRecepcionQueue(recepcionQueue.map(item => item.id === modalBox.pacienteId ? { ...item, box: modalBox.boxDestino } : item));
         }
@@ -104,7 +110,8 @@ export default function ReceptionistPortal() {
         if (estado === 'SOLICITADA') return { backgroundColor: '#fef3c7', color: '#d97706', padding: '0.3rem 0.8rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '700' };
         if (estado === 'EN_ESPERA') return { backgroundColor: '#e0f2fe', color: '#0284c7', padding: '0.3rem 0.8rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '700' };
         if (estado === 'CANCELADA') return { backgroundColor: '#fee2e2', color: '#ef4444', padding: '0.3rem 0.8rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '700' };
-        return { backgroundColor: '#d1fae5', color: '#059669', padding: '0.3rem 0.8rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '700' }; // Para CERRADA / EN_ATENCION
+        if (estado === 'EN_ATENCION') return { backgroundColor: '#dcfce7', color: '#166534', padding: '0.3rem 0.8rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '700' };
+        return { backgroundColor: '#d1fae5', color: '#059669', padding: '0.3rem 0.8rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '700' }; // Para CERRADA
     };
 
     return (
@@ -132,13 +139,28 @@ export default function ReceptionistPortal() {
                             {recepcionQueue.map((item) => (
                                 <tr key={item.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                                     <td style={{ padding: '1rem' }}>#{item.id}</td><td style={{ padding: '1rem', fontWeight: '700' }}>{item.paciente}</td><td style={{ padding: '1rem' }}>{item.rut}</td><td style={{ padding: '1rem' }}>{item.especialidad}</td>
-                                    <td style={{ padding: '1rem' }}><div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={{ fontWeight: '600', color: '#0f766e' }}>{item.box}</span>{item.estado !== 'CERRADA' && (<button onClick={() => abrirModal('REASIGNAR', item)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>✏️</button>)}</div></td>
+                                    <td style={{ padding: '1rem' }}><div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={{ fontWeight: '600', color: '#0f766e' }}>{item.box}</span>{item.estado !== 'CERRADA' && item.estado !== 'CANCELADA' && (<button onClick={() => abrirModal('REASIGNAR', item)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>✏️</button>)}</div></td>
                                     <td style={{ padding: '1rem' }}><span style={getBadgeStyle(item.estado)}>{item.estado.replace('_', ' ')}</span></td>
                                     <td style={{ padding: '1rem', textAlign: 'right' }}>
                                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                                            {item.estado === 'SOLICITADA' && (<button onClick={() => marcarLlegada(item.id)} style={{ backgroundColor: '#0284c7', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}>Marcar Llegada</button>)}
-                                            {item.estado === 'EN_ESPERA' && (<button onClick={() => abrirModal('DERIVAR', item)} style={{ backgroundColor: '#059669', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}>Derivar a Box</button>)}
-                                            {(item.estado === 'CERRADA' || item.estado === 'CANCELADA') && (<span style={{ fontSize: '0.85rem', color: '#94a3b8', fontStyle: 'italic', fontWeight: '600' }}>Completado</span>)}
+                                            {item.estado === 'SOLICITADA' && (
+                                                <>
+                                                    <button onClick={() => marcarLlegada(item.id)} style={{ backgroundColor: '#0284c7', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}>Marcar Llegada</button>
+                                                    <button onClick={() => cancelarAtencion(item.id)} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}>Cancelar</button>
+                                                </>
+                                            )}
+                                            {item.estado === 'EN_ESPERA' && (
+                                                <>
+                                                    <button onClick={() => abrirModal('DERIVAR', item)} style={{ backgroundColor: '#059669', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}>Derivar a Box</button>
+                                                    <button onClick={() => cancelarAtencion(item.id)} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}>Cancelar</button>
+                                                </>
+                                            )}
+                                            {item.estado === 'EN_ATENCION' && (
+                                                <button onClick={() => finalizarAtencion(item.id)} style={{ backgroundColor: '#0f766e', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}>Finalizar Atención</button>
+                                            )}
+                                            {(item.estado === 'CERRADA' || item.estado === 'CANCELADA') && (
+                                                <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontStyle: 'italic', fontWeight: '600' }}>Completado</span>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>
