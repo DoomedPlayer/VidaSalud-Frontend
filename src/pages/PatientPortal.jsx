@@ -18,34 +18,40 @@ export default function PatientPortal() {
     const [rutPaciente, setRutPaciente] = useState('');
 
     // Formulario
+    const [boxes, setBoxes] = useState([]);
+    const [boxSeleccionado, setBoxSeleccionado] = useState('');
     const [especialidades, setEspecialidades] = useState([]);
     const [especialidad, setEspecialidad] = useState('');
     const [fechaReserva, setFechaReserva] = useState('');
     const [horaReserva, setHoraReserva] = useState('08:00');
-    const horariosFijos = ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'];
+    const horariosFijos = ['08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'];
 
     useEffect(() => {
         const fetchDatosIniciales = async () => {
             setIsLoading(true);
             setErrorBackend(false);
             try {
-                const [servicesRes, atencionesRes] = await Promise.all([
+                const [servicesRes, atencionesRes,boxesRes] = await Promise.all([
                     api.get('/catalog/services'),
-                    api.get('/appointments') 
+                    api.get('/appointments'),
+                    api.get('/catalog/boxes')
                 ]);
                 
                 const serviciosData = servicesRes.data || [];
+                const boxesData = boxesRes.data || [];
                 setEspecialidades(serviciosData);
+                setBoxes(boxesData);
 
                 const misCitasBackend = (atencionesRes.data || [])
                     .filter(c => c.pacienteId === correoPaciente)
                     .map(c => {
                         const prestacionInfo = serviciosData.find(s => s.id === c.prestacionId);
+                        const boxInfo = cupoInfo?.box ? (cupoInfo.box.codigo || cupoInfo.box) : 'Box Asignado';
                         return {
                             id: c.id,
                             especialidad: prestacionInfo ? prestacionInfo.nombre : 'Consulta General',
                             medico: 'Médico Asignado', 
-                            sede: 'Sede San Bernardo', 
+                            sede: boxInfo, 
                             fecha: c.fechaCreacion ? c.fechaCreacion.split('T')[0] : '',
                             hora: c.fechaCreacion ? c.fechaCreacion.split('T')[1].substring(0,5) : '',
                             estado: c.estado
@@ -69,13 +75,14 @@ export default function PatientPortal() {
         if (!fechaReserva || !especialidad || !rutPaciente) return;
 
         const prestacionObj = especialidades.find(p => p.nombre === especialidad);
+        const boxCodigo = cupoSeleccionadoObj?.box?.codigo || cupoSeleccionadoObj?.box || 'Box Asignado';
 
         const payload = {
             pacienteId: correoPaciente, 
             rut: rutPaciente,               
             nombrePaciente: nombrePaciente, 
             prestacionId: prestacionObj ? prestacionObj.id : 1, 
-            cupoId: 1, 
+            cupoId: parseInt(cupoIdSeleccionado), 
             estado: 'SOLICITADA',
             fechaCreacion: `${fechaReserva}T${horaReserva}:00`
         };
@@ -85,8 +92,8 @@ export default function PatientPortal() {
             const nuevaCita = {
                 id: res.data.id || Math.floor(Math.random() * 900) + 100,
                 especialidad,
-                medico: especialidad === 'Cardiología' ? 'Dra. Elena Valdés' : 'Dr. Roberto Gómez',
-                sede: 'Sede San Bernardo',
+                medico: 'Médico Asignado',
+                sede: boxCodigo,
                 fecha: fechaReserva,
                 hora: horaReserva,
                 estado: 'SOLICITADA'
@@ -132,6 +139,11 @@ export default function PatientPortal() {
                     <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Especialidad</label><select required value={especialidad} onChange={(e) => setEspecialidad(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }}><option value="">Seleccione especialidad...</option>{especialidades.map(p => (<option key={p.id} value={p.nombre}>{p.nombre}</option>))}</select></div>
                     <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Fecha Preferencia</label><input type="date" min={hoy} value={fechaReserva} onChange={(e) => setFechaReserva(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }} required /></div>
                     <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Horario Preferencia</label><select value={horaReserva} onChange={(e) => setHoraReserva(e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }}>{horariosFijos.map(h => <option key={h} value={h}>{h}</option>)}</select></div>
+                    <div><label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem' }}>Seleccionar Cupo / Box / Hora</label><select value={cupoIdSeleccionado} onChange={(e) => setCupoIdSeleccionado(e.target.value)} required style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px' }}><option value="">Seleccione un cupo...</option>{cuposFiltrados.map(c => {
+                        const bCode = c.box?.codigo || c.box || 'Box';
+                        const timeStr = c.fechaHoraInicio ? String(c.fechaHoraInicio).replace('T', ' ') : 'Horario';
+                        return (<option key={c.id} value={c.id}>{bCode} - {timeStr}</option>);
+                    })}</select></div>
                     <div><button type="submit" style={{ backgroundColor: '#0284c7', color: 'white', border: 'none', padding: '0.8rem 1.25rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', width: '100%' }}>Reservar Hora</button></div>
                 </form>
             </div>
