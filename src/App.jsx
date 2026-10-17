@@ -8,6 +8,7 @@ import PatientPortal from './pages/PatientPortal';
 import Catalog from './pages/Catalog';
 import Reports from './pages/Reports';
 import Audit from './pages/Audit';
+import Unauthorized from './pages/Unauthorized';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Importamos el logo oficial
@@ -72,6 +73,7 @@ export default function App() {
                         <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} />
                         
                         <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['Admin', 'Recepcionista', 'Paciente', 'Auditor']}><Dashboard /></ProtectedRoute>} />
+                        <Route path="/unauthorized" element={<Unauthorized />} />
                         <Route path="/reception" element={<ProtectedRoute allowedRoles={['Admin', 'Recepcionista']}><ReceptionistPortal /></ProtectedRoute>} />
                         <Route path="/patient-portal" element={<ProtectedRoute allowedRoles={['Paciente']}><PatientPortal /></ProtectedRoute>} />
                         <Route path="/catalog" element={<ProtectedRoute allowedRoles={['Admin', 'Recepcionista']}><Catalog /></ProtectedRoute>} />

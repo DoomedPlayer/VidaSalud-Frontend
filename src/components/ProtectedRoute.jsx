@@ -19,7 +19,7 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     if (!tieneAcceso) {
         // Si está logueado pero no tiene el rol (ej: un Paciente intentando entrar a Auditoría)
         // lo devolvemos al Dashboard para que no vea pantallas bloqueadas.
-        return <Navigate to="/dashboard" replace />;
+        return <Navigate to="/unauthorized" replace />;
     }
 
     // Si pasó todas las pruebas, renderizamos la vista que solicitó
