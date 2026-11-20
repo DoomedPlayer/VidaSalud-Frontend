@@ -192,19 +192,6 @@ export default function Catalog() {
 
         try {
             const res = await api.post('/catalog/services', payload);
-
-            if (cuenta) {
-                await registrarAuditoria(
-                    api, 
-                    cuenta, 
-                    "CATALOG_CREATE", 
-                    "Catálogo", 
-                    `Se creó la prestación: ${nuevaPrestacion.nombre} con precio $${nuevaPrestacion.precio}`
-                );
-            } else {
-                console.warn("⚠️ Auditoría omitida: No hay cuenta MSAL activa.");
-            }
-
             setPrestaciones([...prestaciones, res.data]);
         } catch (err) {
             console.error("Error al crear prestación:", err);
@@ -217,24 +204,10 @@ export default function Catalog() {
     const iniciarEdicionPrecio = (prestacion) => setPrecioEditando({ id: prestacion.id, nuevoPrecio: prestacion.precio });
     
     const guardarEdicionPrecio = async (id) => {
-    const payload = { precio: parseFloat(precioEditando.nuevoPrecio) };
-    try {
-        await api.put(`/catalog/services/${id}`, payload);
-        setPrestaciones(prestaciones.map(p => p.id === id ? { ...p, precio: payload.precio } : p));
-        const prestacionEncontrada = prestaciones.find(p => p.id === id);
-        const nombrePrestacion = prestacionEncontrada ? prestacionEncontrada.nombre : `ID ${id}`;
-
-        if (cuenta) {
-                await registrarAuditoria(
-                    api, 
-                    cuenta, 
-                    "CATALOG_UPDATE", 
-                    "Catálogo", 
-                    `Se modificó la prestación: ${nombrePrestacion} a nuevo precio $${payload.precio}.`
-                );
-            } else {
-                console.warn("⚠️ Auditoría de precio omitida: No hay cuenta MSAL activa.");
-            }
+        const payload = { precio: parseFloat(precioEditando.nuevoPrecio) };
+        try {
+            await api.put(`/catalog/services/${id}`, payload);
+            setPrestaciones(prestaciones.map(p => p.id === id ? { ...p, precio: payload.precio } : p));
         } catch (err) {
             console.error("Error al actualizar precio:", err);
             console.warn("Actualizando precio en memoria (Modo Offline)");
