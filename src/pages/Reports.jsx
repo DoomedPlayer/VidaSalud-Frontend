@@ -19,6 +19,11 @@ export default function Reports() {
     const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleTimeString());
     const [errorBackend, setErrorBackend] = useState(false);
 
+    const rawEspera = kpisData.tiempoPromedioEsperaMinutos || 0;
+    const esperaFormateada = rawEspera > 0 && rawEspera < 1
+        ? Number(rawEspera.toFixed(1))
+        : Math.round(rawEspera);
+
     const fetchDatos = async () => {
         setIsRefreshing(true);
         setErrorBackend(false);
@@ -45,7 +50,7 @@ export default function Reports() {
             setKpis({
                 atencionesHoy: totalHoy,
                 variacionAtenciones: `Cerradas: ${cerradas}`,
-                tiempoEspera: Math.round(kpisData.tiempoPromedioEsperaMinutos || 0),
+                tiempoEspera: esperaFormateada,
                 estadoEspera: "Minutos en promedio",
                 boxesOperativos: totalBoxesCount,
                 totalBoxes: totalBoxesCount,
