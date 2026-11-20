@@ -19,11 +19,6 @@ export default function Reports() {
     const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleTimeString());
     const [errorBackend, setErrorBackend] = useState(false);
 
-    const rawEspera = kpisData.tiempoPromedioEsperaMinutos || 0;
-    const esperaFormateada = rawEspera > 0 && rawEspera < 1
-        ? Number(rawEspera.toFixed(1))
-        : Math.round(rawEspera);
-
     const fetchDatos = async () => {
         setIsRefreshing(true);
         setErrorBackend(false);
@@ -35,10 +30,12 @@ export default function Reports() {
                 api.get('/catalog/boxes')
             ]);
 
-            const kpisData = kpisRes.data || {};
-            const rawServices = Array.isArray(topServicesRes.data) ? topServicesRes.data : [];
-            const catalogoData = Array.isArray(catalogServicesRes.data) ? catalogServicesRes.data : [];
-            const boxesData = Array.isArray(boxesRes.data) ? boxesRes.data : [];
+            const kpisData = (kpisRes && typeof kpisRes.data === 'object' && kpisRes.data !== null)
+                ? kpisRes.data
+                : {};
+            const rawServices = Array.isArray(topServicesRes?.data) ? topServicesRes.data : [];
+            const catalogoData = Array.isArray(catalogServicesRes?.data) ? catalogServicesRes.data : [];
+            const boxesData = Array.isArray(boxesRes?.data) ? boxesRes.data : [];
 
             const cerradas = kpisData.atencionesCerradas || 0;
             const totalHoy = Math.max(
@@ -46,6 +43,11 @@ export default function Reports() {
                 kpisData.atencionesConfirmadas || 0
             );
             const totalBoxesCount = boxesData.length || 3;
+
+            const rawEspera = Number(kpisData.tiempoPromedioEsperaMinutos) || 0;
+            const esperaFormateada = rawEspera > 0 && rawEspera < 1
+                ? Number(rawEspera.toFixed(1))
+                : Math.round(rawEspera);
 
             setKpis({
                 atencionesHoy: totalHoy,
@@ -138,7 +140,7 @@ export default function Reports() {
             <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '2rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
                 <h3 style={{ margin: '0 0 2rem 0', color: '#1e293b', fontSize: '1.25rem' }}>Distribución de Atenciones por Especialidad</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    {topServices.map((servicio, index) => (
+                    {(Array.isArray(topServices) ? topServices : []).map((servicio, index) => (
                         <div key={index}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                                 <span style={{ fontSize: '0.95rem', color: '#334155', fontWeight: '600' }}>{servicio.nombre}</span>
