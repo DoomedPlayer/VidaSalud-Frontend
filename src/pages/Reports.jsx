@@ -3,10 +3,10 @@ import { useApi } from '../hooks/useApi';
 
 export default function Reports() {
     const api = useApi();
-    
+
     const [kpis, setKpis] = useState({
         atencionesHoy: 0,
-        variacionAtenciones: "Cálculo en vivo",
+        variacionAtenciones: "Cerradas: 0",
         tiempoEspera: 0,
         estadoEspera: "Minutos en promedio",
         boxesOperativos: 0,
@@ -14,7 +14,7 @@ export default function Reports() {
         estadoBoxes: "Sincronizando..."
     });
     const [topServices, setTopServices] = useState([]);
-    
+
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleTimeString());
     const [errorBackend, setErrorBackend] = useState(false);
@@ -23,77 +23,48 @@ export default function Reports() {
         setIsRefreshing(true);
         setErrorBackend(false);
         try {
-            const [appointmentsRes, catalogServicesRes, boxesRes, cuposRes] = await Promise.all([
-                api.get('/appointments'),
+            const [kpisRes, topServicesRes, catalogServicesRes, boxesRes] = await Promise.all([
+                api.get('/report/kpis/today'),
+                api.get('/report/top-services'),
                 api.get('/catalog/services'),
-                api.get('/catalog/boxes'),
-                api.get('/catalog/cupos')
+                api.get('/catalog/boxes')
             ]);
 
-            const appointmentsData = Array.isArray(appointmentsRes.data) ? appointmentsRes.data : [];
+            const kpisData = kpisRes.data || {};
+            const rawServices = Array.isArray(topServicesRes.data) ? topServicesRes.data : [];
             const catalogoData = Array.isArray(catalogServicesRes.data) ? catalogServicesRes.data : [];
             const boxesData = Array.isArray(boxesRes.data) ? boxesRes.data : [];
-            const cuposData = Array.isArray(cuposRes.data) ? cuposRes.data : [];
 
-            const now = new Date();
-            const fechaHoyStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
-            const appointmentsWithCupo = appointmentsData.map(a => {
-                const cupo = cuposData.find(c => c.id === a.cupoId);
-                // Normalizamos a formato ISO válido (reemplazando espacio por 'T' si viene de MySQL)
-                const fechaInicioRaw = cupo?.fechaHoraInicio ? String(cupo.fechaHoraInicio).replace(' ', 'T') : '';
-                return {
-                    ...a,
-                    fechaCupoStr: fechaInicioRaw ? fechaInicioRaw.substring(0, 10) : '',
-                    fechaHoraCupoCompleta: fechaInicioRaw // Guardamos la hora exacta del turno
-                };
-            });
-
-            // Filtrar atenciones exclusivas de hoy
-            const atencionesHoyList = appointmentsWithCupo.filter(a => a.fechaCupoStr === fechaHoyStr);
-            const atencionesCerradas = atencionesHoyList.filter(a => a.estado === 'CERRADA' || a.estado === 'CERRADO').length;
-
-            // Filtrar pendientes/en espera de HOY para el tiempo de espera real
-            const atencionesEnEsperaHoy = atencionesHoyList.filter(a => 
-                a.estado === 'EN_ESPERA' || a.estado === 'CONFIRMADA' || a.estado === 'SOLICITADA'
+            const cerradas = kpisData.atencionesCerradas || 0;
+            const totalHoy = Math.max(
+                kpisData.atencionesSolicitadas || 0,
+                kpisData.atencionesConfirmadas || 0
             );
-
-            let calculatedWaitTime = 0;
-            if (atencionesEnEsperaHoy.length > 0) {
-                const totalDiffMinutes = atencionesEnEsperaHoy.reduce((acc, curr) => {
-                    // Calculamos a partir de la fecha y hora exacta del CUPO
-                    const cupoTime = curr.fechaHoraCupoCompleta ? new Date(curr.fechaHoraCupoCompleta) : now;
-                    
-                    // Math.max evita valores negativos si la hora del cupo aún no llega
-                    const diffMin = Math.max(0, (now - cupoTime) / 60000);
-                    return acc + diffMin;
-                }, 0);
-                calculatedWaitTime = Math.round(totalDiffMinutes / atencionesEnEsperaHoy.length);
-            }
             const totalBoxesCount = boxesData.length || 3;
+
             setKpis({
-                atencionesHoy: atencionesHoyList.length,
-                variacionAtenciones: `Cerradas: ${atencionesCerradas}`,
-                tiempoEspera: calculatedWaitTime,
+                atencionesHoy: totalHoy,
+                variacionAtenciones: `Cerradas: ${cerradas}`,
+                tiempoEspera: Math.round(kpisData.tiempoPromedioEsperaMinutos || 0),
                 estadoEspera: "Minutos en promedio",
                 boxesOperativos: totalBoxesCount,
                 totalBoxes: totalBoxesCount,
                 estadoBoxes: "Operativos"
             });
 
-            // Mapeo de demanda por servicios
             const paletaColores = ['#0f766e', '#0284c7', '#059669', '#d97706', '#8b5cf6', '#e11d48'];
-            const conteoPorServicio = {};
-            appointmentsData.forEach(item => {
-                conteoPorServicio[item.prestacionId] = (conteoPorServicio[item.prestacionId] || 0) + 1;
-            });
+            const sumaTotal = rawServices.reduce(
+                (acc, s) => acc + (s.cantidadSolicitudes || 0),
+                0
+            ) || 1;
 
-            const totalSolicitudes = appointmentsData.length || 1;
-            const mappedServices = catalogoData.map((serv, index) => {
-                const count = conteoPorServicio[serv.id] || 0;
-                const porcentajeCalc = Math.round((count / totalSolicitudes) * 100);
+            const mappedServices = rawServices.map((serv, index) => {
+                const count = serv.cantidadSolicitudes || 0;
+                const catalogoMatch = catalogoData.find(c => c.id === serv.prestacionId);
+                const porcentajeCalc = Math.round((count / sumaTotal) * 100);
+
                 return {
-                    nombre: serv.nombre,
+                    nombre: catalogoMatch ? catalogoMatch.nombre : `Prestación #${serv.prestacionId}`,
                     porcentaje: porcentajeCalc,
                     color: paletaColores[index % paletaColores.length]
                 };
@@ -105,7 +76,7 @@ export default function Reports() {
 
             setLastUpdate(new Date().toLocaleTimeString());
         } catch (error) {
-            console.error("Error sincronizando reportes:", error);
+            console.error("Error sincronizando reportes con report-svc:", error);
             setErrorBackend(true);
             setLastUpdate(new Date().toLocaleTimeString() + " (Error de Red)");
         } finally {
@@ -116,20 +87,6 @@ export default function Reports() {
     useEffect(() => {
         fetchDatos();
     }, []);
-
-    // --- DATOS DE RESPALDO (Si el backend de Nicolás está apagado) ---
-    const displayKpis = kpis || {
-        atencionesHoy: 148, variacionAtenciones: "+12% vs. ayer",
-        tiempoEspera: 15, estadoEspera: "Minutos en promedio", // Valor de respaldo fijado en 15 minutos
-        boxesOperativos: 18, totalBoxes: 20, estadoBoxes: "2 en mantención"
-    };
-
-    const displayServices = topServices || [
-        { nombre: 'Medicina General', porcentaje: 45, color: '#0f766e' },
-        { nombre: 'Cardiología', porcentaje: 25, color: '#0284c7' },
-        { nombre: 'Pediatría', porcentaje: 20, color: '#059669' },
-        { nombre: 'Urgencia Dental', porcentaje: 10, color: '#d97706' }
-    ];
 
     return (
         <div style={{ position: 'relative' }}>
@@ -149,7 +106,7 @@ export default function Reports() {
 
             {errorBackend && (
                 <div style={{ backgroundColor: '#fffbeb', borderLeft: '4px solid #f59e0b', padding: '1rem', marginBottom: '2rem', borderRadius: '0 8px 8px 0', color: '#b45309', fontSize: '0.9rem', fontWeight: '600' }}>
-                    ⚠️ Backend no detectado. Mostrando datos de simulación para propósitos de interfaz.
+                    ⚠️ Microservicio de Reportes no disponible en este momento.
                 </div>
             )}
 
@@ -157,18 +114,18 @@ export default function Reports() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
                 <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '2rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
                     <span style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: '700', textTransform: 'uppercase' }}>Atenciones Hoy</span>
-                    <div style={{ fontSize: '3rem', fontWeight: '800', color: '#0f766e' }}>{displayKpis.atencionesHoy}</div>
-                    <span style={{ color: '#059669', fontSize: '0.9rem', fontWeight: '600' }}>{displayKpis.variacionAtenciones}</span>
+                    <div style={{ fontSize: '3rem', fontWeight: '800', color: '#0f766e' }}>{kpis.atencionesHoy}</div>
+                    <span style={{ color: '#059669', fontSize: '0.9rem', fontWeight: '600' }}>{kpis.variacionAtenciones}</span>
                 </div>
                 <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '2rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
                     <span style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: '700', textTransform: 'uppercase' }}>Tiempo de Espera Promedio</span>
-                    <div style={{ fontSize: '3rem', fontWeight: '800', color: '#1e293b' }}>{displayKpis.tiempoEspera} min</div>
-                    <span style={{ color: '#0284c7', fontSize: '0.9rem', fontWeight: '600' }}>{displayKpis.estadoEspera}</span>
+                    <div style={{ fontSize: '3rem', fontWeight: '800', color: '#1e293b' }}>{kpis.tiempoEspera} min</div>
+                    <span style={{ color: '#0284c7', fontSize: '0.9rem', fontWeight: '600' }}>{kpis.estadoEspera}</span>
                 </div>
                 <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '2rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
                     <span style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: '700', textTransform: 'uppercase' }}>Boxes Operativos</span>
-                    <div style={{ fontSize: '3rem', fontWeight: '800', color: '#1e293b' }}>{displayKpis.boxesOperativos} / {displayKpis.totalBoxes}</div>
-                    <span style={{ color: '#d97706', fontSize: '0.9rem', fontWeight: '600' }}>{displayKpis.estadoBoxes}</span>
+                    <div style={{ fontSize: '3rem', fontWeight: '800', color: '#1e293b' }}>{kpis.boxesOperativos} / {kpis.totalBoxes}</div>
+                    <span style={{ color: '#d97706', fontSize: '0.9rem', fontWeight: '600' }}>{kpis.estadoBoxes}</span>
                 </div>
             </div>
 
@@ -176,7 +133,7 @@ export default function Reports() {
             <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '2rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
                 <h3 style={{ margin: '0 0 2rem 0', color: '#1e293b', fontSize: '1.25rem' }}>Distribución de Atenciones por Especialidad</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    {displayServices.map((servicio, index) => (
+                    {topServices.map((servicio, index) => (
                         <div key={index}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                                 <span style={{ fontSize: '0.95rem', color: '#334155', fontWeight: '600' }}>{servicio.nombre}</span>
